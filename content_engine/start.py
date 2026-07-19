@@ -1,4 +1,4 @@
-# content_engine/start.py — Стартовый handler бота Sozanda с выбором страны и сценария
+# content_engine/start.py — Стартовый handler бота TojikAI с выбором страны и языка
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -11,25 +11,15 @@ from keyboards.main_menu_content import get_main_menu
 
 router = Router()
 
-
 # ============================================
 # ТЕКСТЫ
 # ============================================
 
-WELCOME_TEXT_RU = """🇹🇯 Хуш омадед ба <b>TojikAI</b>!
+WELCOME_TEXT = """👋 Хуш омадед ба / Добро пожаловать в / Xush kelibsiz <b>TojikAI v2.2</b>!
 
-Аввалин платформаи AI барои контент, маркетинг ва рушди бизнес дар Тоҷикистон ва Осиёи Марказӣ.
+🤖 Первая AI & SMM Платформа для вашего бизнеса в Таджикистане, Узбекистане и России.
 
-🤖 AI Контент
-📈 Постҳо
-🎬 Сторисҳо
-💡 Идеяҳо
-🎮 Бизнес Империя
-👥 Даъват
-📊 Омор
-⭐ Premium
-
-<b>Выберите язык / Забонро интихоб кунед / Tilni tanlang:</b>"""
+<b>Выберите вашу страну / Интихоби кишвар / Mamlakatni tanlang:</b>"""
 
 
 # ============================================
@@ -58,88 +48,112 @@ async def cmd_start(message: Message, state: FSMContext):
         referrer_id=referrer_id
     )
 
-    # Очищаем состояние
     await state.clear()
 
-    # Показываем выбор языка
+    # Показываем выбор страны
+    buttons = [
+        [
+            InlineKeyboardButton(text="Таджикистан 🇹🇯", callback_data="sel_country_tj"),
+            InlineKeyboardButton(text="Узбекистан 🇺🇿", callback_data="sel_country_uz")
+        ],
+        [
+            InlineKeyboardButton(text="Россия 🇷🇺", callback_data="sel_country_ru")
+        ]
+    ]
+    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
     await message.answer(
-        WELCOME_TEXT_RU,
-        reply_markup=get_language_menu(),
+        WELCOME_TEXT,
+        reply_markup=markup,
         parse_mode="HTML"
     )
 
 
 # ============================================
-# ВЫБОР ЯЗЫКА И СТРАНЫ
+# ОБРАБОТКА ВЫБОРА СТРАНЫ
 # ============================================
 
-@router.callback_query(F.data == "lang_ru")
-async def show_country_selection(callback: CallbackQuery):
-    # Показываем клавиатуру выбора страны для русского языка
+@router.callback_query(F.data == "sel_country_tj")
+async def select_language_tj(callback: CallbackQuery):
     buttons = [
         [
-            InlineKeyboardButton(text="Узбекистан 🇺🇿", callback_data="country_uz_ru"),
-            InlineKeyboardButton(text="Таджикистан 🇹🇯", callback_data="country_tj_ru")
+            InlineKeyboardButton(text="Тоҷикӣ 🇹🇯", callback_data="set_cl_tj_tg"),
+            InlineKeyboardButton(text="Русский 🇷🇺", callback_data="set_cl_tj_ru")
         ]
     ]
-    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.edit_text(
-        "🇷🇺 Выберите вашу страну для персонализации бизнес-ниш, логики ИИ и платежей:\n\n"
-        "🇺🇿 <b>Узбекистан</b> (валюта UZS, платежи Click/Payme)\n"
-        "🇹🇯 <b>Таджикистан</b> (валюта Сомони TJS, платежи Alif/Душанбе Сити)",
-        reply_markup=markup,
+        "🇹🇯 <b>Тоҷикистон</b>\n\nИнтихоби забон / Выберите язык:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
         parse_mode="HTML"
     )
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("country_"))
-async def set_country_ru(callback: CallbackQuery):
+@router.callback_query(F.data == "sel_country_uz")
+async def select_language_uz(callback: CallbackQuery):
+    buttons = [
+        [
+            InlineKeyboardButton(text="O'zbekcha 🇺🇿", callback_data="set_cl_uz_uz"),
+            InlineKeyboardButton(text="Русский 🇷🇺", callback_data="set_cl_uz_ru")
+        ]
+    ]
+    await callback.message.edit_text(
+        "🇺🇿 <b>O'zbekiston</b>\n\nTilni tanlang / Выберите язык:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "sel_country_ru")
+async def select_language_ru(callback: CallbackQuery):
+    # Для России поддерживается только русский язык
     user_id = callback.from_user.id
-    country_data = callback.data.replace("country_", "")  # "uz_ru" или "tj_ru"
-    country, lang = country_data.split("_")
+    await update_user_language(user_id, "ru")
+    await update_user_country(user_id, "ru")
 
-    await update_user_language(user_id, lang)
-    await update_user_country(user_id, country)
-
-    text = "✅ Включен сценарий <b>Узбекистан 🇺🇿</b> (валюта UZS, Click/Payme) на русском языке." if country == "uz" else "✅ Включен сценарий <b>Таджикистан 🇹🇯</b> (валюта Сомони TJS, Alif/Душанбе Сити) на русском языке."
+    text = "✅ Включен сценарий <b>Россия 🇷🇺</b> (валюта RUB ₽, оплата Картой) на русском языке."
     await callback.message.edit_text(text, parse_mode="HTML")
 
     await callback.message.answer(
         "👋 Главное меню\n\n✨ Выберите, что создать:",
+        reply_markup=get_main_menu("ru")
+    )
+    await callback.answer()
+
+
+# ============================================
+# ОБРАБОТКА СВЯЗКИ СТРАНА + ЯЗЫК
+# ============================================
+
+@router.callback_query(F.data.startswith("set_cl_"))
+async def set_country_and_lang(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    data = callback.data.replace("set_cl_", "")  # "tj_tg", "tj_ru", "uz_uz", "uz_ru"
+    country, lang = data.split("_")
+
+    await update_user_language(user_id, lang)
+    await update_user_country(user_id, country)
+
+    if country == "tj":
+        if lang == "tg":
+            text = "✅ Забон танзим шуд: <b>Тоҷикӣ 🇹🇯</b>\n\nСенарияи <b>Тоҷикистон</b> (асъори Сомони TJS, пардохтҳои Alif/Душанбе Сити) фаъол гардид."
+            main_text = "👋 Менюи асосӣ"
+        else:
+            text = "✅ Язык установлен: <b>Русский 🇷🇺</b>\n\nАктивирован сценарий <b>Таджикистан 🇹🇯</b> (валюта Сомони TJS, Alif/Душанбе Сити)."
+            main_text = "👋 Главное меню"
+    else:
+        if lang == "uz":
+            text = "✅ Til o'rnatildi: <b>O'zbek tili 🇺🇿</b>\n\n<b>O'zbekiston</b> ssenariysi (valyuta UZS, Click/Payme) faollashtirildi."
+            main_text = "👋 Asosiy menyu"
+        else:
+            text = "✅ Язык установлен: <b>Русский 🇷🇺</b>\n\nАктивирован сценарий <b>Узбекистан 🇺🇿</b> (валюта UZS, Click/Payme)."
+            main_text = "👋 Главное меню"
+
+    await callback.message.edit_text(text, parse_mode="HTML")
+
+    await callback.message.answer(
+        main_text,
         reply_markup=get_main_menu(lang)
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "lang_tg")
-async def set_language_tg(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    await update_user_language(user_id, "tg")
-    await update_user_country(user_id, "tj")
-
-    text = "✅ Забон танзим шуд: <b>Тоҷикӣ 🇹🇯</b>\n\nСенарияи <b>Тоҷикистон</b> (асъори Сомони TJS, пардохтҳои Alif/Душанбе Сити) фаъол гардид. Барои оғоз менюро истифода баред 👇"
-    await callback.message.edit_text(text, parse_mode="HTML")
-
-    await callback.message.answer(
-        "👋 Менюи асосӣ",
-        reply_markup=get_main_menu("tg")
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "lang_uz")
-async def set_language_uz(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    await update_user_language(user_id, "uz")
-    await update_user_country(user_id, "uz")
-
-    text = "✅ Til o'rnatildi: <b>O'zbek tili 🇺🇿</b>\n\n<b>O'zbekiston</b> ssenariysi (valyuta UZS, Click/Payme to'lovlari) faollashtirildi. Boshlash uchun quyidagi menyudan foydalaning 👇"
-    await callback.message.edit_text(text, parse_mode="HTML")
-
-    await callback.message.answer(
-        "👋 Asosiy menyu",
-        reply_markup=get_main_menu("uz")
     )
     await callback.answer()
 

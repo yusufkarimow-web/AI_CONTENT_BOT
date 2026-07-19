@@ -1,11 +1,11 @@
-# content_engine/menu.py — Главный SMM-маркетолог бот TojikAI (v2.0)
-# Полноценное интерактивное сопровождение пользователя: Страна -> Ниша -> Платформа -> Цель -> Формат -> Результат -> Цепочка действий.
-# Все состояния хранятся строго в FSMContext (state) для безопасности.
+# content_engine/menu.py — Главный SMM-маркетолог бот TojikAI (v2.2)
+# Полноценное интерактивное сопровождение пользователя: Страна -> Ниша -> Платформа -> Цель -> Формат -> Результат -> PDF Генерация -> AI Coach.
 
 import random
 import json
+import io
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, BufferedInputFile
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -34,12 +34,38 @@ from database.models import (
     get_generation_history,
 )
 from services.ai_generator import generate_ai_content
+from services.pdf_generator import generate_marketing_pdf
 from content_engine.niche_manager import get_all_niches, get_niche_key_by_text, get_niche_name
+
+# Вспомогательная функция для отправки длинных сообщений ИИ
+async def send_long_message(message: Message, text: str, reply_markup=None):
+    """Отправляет длинные тексты, аккуратно разбивая их по абзацам до 4000 символов"""
+    if len(text) <= 4000:
+        await message.answer(text, reply_markup=reply_markup, parse_mode="HTML")
+        return
+
+    paragraphs = text.split("\n")
+    current_chunk = []
+    current_length = 0
+
+    for p in paragraphs:
+        if current_length + len(p) + 1 > 4000:
+            chunk_text = "\n".join(current_chunk)
+            await message.answer(chunk_text, parse_mode="HTML")
+            current_chunk = [p]
+            current_length = len(p)
+        else:
+            current_chunk.append(p)
+            current_length += len(p) + 1
+
+    if current_chunk:
+        chunk_text = "\n".join(current_chunk)
+        await message.answer(chunk_text, reply_markup=reply_markup, parse_mode="HTML")
 
 # Проверка, является ли текст кнопкой ниши
 def is_niche_button(text: str) -> bool:
     all_names = set()
-    for country in ["uz", "tj"]:
+    for country in ["uz", "tj", "ru"]:
         for lang in ["ru", "tg", "uz"]:
             for n in get_all_niches(lang, country):
                 all_names.add(n.get(f"name_{lang}"))
@@ -191,7 +217,7 @@ TEXTS = {
         "choose_tool": "⚡ <b>SMM & Media Платформа TojikAI</b>\n\nНиша выбрана: <b>{niche}</b>\n\nВыберите инструмент продвижения бизнеса:",
         "choose_goal": "🎯 <b>Шаг 1: Выберите цель продвижения</b>\n\nКакого результата вы хотите достичь?",
         "choose_format": "👇 <b>Шаг 2: Выберите желаемый формат контента</b> для платформы <b>{platform}</b>:",
-        "generating": "⏳ Генерирую профессиональный контент через ИИ...\n\nЭто займёт несколько секунд...",
+        "generating": "⏳ Генерирую профессиональный маркетинговый пакет через ИИ...\n\nЭто займет несколько секунд...",
         "limit_reached": "❌ Лимит исчерпан!\n\n💡 У вас закончились бесплатные генерации на сегодня.\n\n🚀 Получите больше:\n• Пригласите друга — +{ref_bonus} генераций\n• Оформите подписку Oson — {oson_limit} генераций/день\n• Или Professional — безлимит!",
         "premium_info": "⭐ <b>Premium подписки TojikAI</b>\n\nAppropriate limits apply for normal users. Free is watermarked. Premium tiers bypass all locks.",
         "support": "📞 <b>Поддержка TojikAI</b>\n\nПишите: @tojikai_support",
@@ -206,7 +232,7 @@ TEXTS = {
         "choose_tool": "⚡ <b>SMM & Media Платформаи TojikAI</b>\n\nНиша интихоб шуд: <b>{niche}</b>\n\nАсбоби пешбурди тиҷоратро интихоб кунед:",
         "choose_goal": "🎯 <b>Қадами 1: Ҳадафи пешбурдро интихоб кунед</b>\n\nШумо мехоҳед ба кадом натиҷа бирасед?",
         "choose_format": "👇 <b>Қадами 2: Формати дилхоҳи контентро интихоб кунед</b> барои <b>{platform}</b>:",
-        "generating": "⏳ AI мундоди касбиро месозад...\n\nЧанд сония вақт мегирад...",
+        "generating": "⏳ AI пакети касбии маркетингиро месозад...\n\nЧанд сония вақт мегирад...",
         "limit_reached": "❌ Лимит ба охир расид!\n\n💡 Генерацияҳои ройгони шумо тамом шуданд.\n\n🚀 Бештар гиред:\n• Дӯстро даъват кунед — +{ref_bonus} генерация\n• Обунаи Oson — {oson_limit} генерация/рӯз",
         "premium_info": "⭐ <b>Обунаҳои Premium TojikAI</b>",
         "support": "📞 <b>Дастгирии TojikAI</b>\n\n@tojikai_support",
@@ -221,7 +247,7 @@ TEXTS = {
         "choose_tool": "⚡ <b>TojikAI SMM & Media Platformasi</b>\n\nSoha tanlandi: <b>{niche}</b>\n\nSohani rivojlantirish vositasini tanlang:",
         "choose_goal": "🎯 <b>1-qadam: Rivojlanish maqsadini tanlang</b>\n\nQanday natijaga erishmoqchisiz?",
         "choose_format": "👇 <b>2-qadam: Kerakli kontent formatini tanlang</b> <b>{platform}</b> uchun:",
-        "generating": "⏳ AI orqali professional kontent yaratilmoqda...\n\nBu bir necha soniya vaqt oladi...",
+        "generating": "⏳ AI orqali professional marketing paketi yaratilmoqda...\n\nBu bir necha soniya vaqt oladi...",
         "limit_reached": "❌ Kunlik limit tugadi!\n\n💡 Bugungi bepul generatsiyalaringiz yakunlandi.\n\n🚀 Ko'proq imkoniyat oling:\n• Do'shingizni taklif qiling — +{ref_bonus} ta generatsiya\n• Oson — {oson_limit} ta/kun",
         "premium_info": "⭐ <b>TojikAI Premium obunalar</b>",
         "support": "📞 <b>Yordam va Aloqa TojikAI</b>\n\n@tojikai_support",
@@ -248,7 +274,7 @@ def get_niche_display(key: str, lang: str = "ru") -> str:
 
 
 # ============================================
-# STATES GROUP (SMM HUB - С сопровождением)
+# STATES GROUP (SMM HUB)
 # ============================================
 
 class QuizStates(StatesGroup):
@@ -560,7 +586,7 @@ async def back_from_goal_to_tool(message: Message, state: FSMContext):
 
 
 # ============================================
-# ШАГ 3: ОБРАБОТКА ФОРМАТА И ЗАПУСК AI-МАРКЕТОЛОГА
+# ШАГ 3: ОБРАБОТКА ФОРМАТА И ЗАПУСК AI-МАРКЕТОЛОГА (И ОТПРАВКА БРЕНДИРОВАННОГО PDF)
 # ============================================
 
 def is_smm_format_button(text: str, current_tool: str, lang: str = "ru") -> bool:
@@ -592,12 +618,10 @@ def get_format_id_by_text(text: str, current_tool: str, lang: str = "ru") -> str
 @router.message(SMMHubStates.selecting_format, F.text.regexp(r"^⬅️"))
 async def back_from_format_to_goal(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    # Сбрасываем и ведем в выбор целей заново
     data = await state.get_data()
     lang = data.get("language", "ru")
     tool_id = data.get("current_tool", "instagram")
 
-    # Имитируем повторный выбор инструмента
     class FakeMessage:
         def __init__(self, text, from_user):
             self.text = text
@@ -653,9 +677,21 @@ async def handle_smm_generation_request(message: Message, state: FSMContext):
     processing_msg = await message.answer(await get_text(user_id, "generating", state), parse_mode="HTML")
 
     try:
-        # Генерируем контент через умный ИИ-генератор со всей цепочкой параметров
+        # 1. Генерируем полный структурированный профессиональный пакет контента через OpenAI
+        niche_name = get_niche_name(niche_key, lang)
+        topic_prompt = (
+            f"Создай полноценный TojikAI Marketing Package для ниши [{niche_name}]. "
+            f"Пакет должен строго включать: "
+            f"1. Анализ ниши (конкуренты, боли, потребности, преимущества). "
+            f"2. Контент-план на 7-14 дней. "
+            f"3. Готовый продающий SMM-Пост. "
+            f"4. Сценарий Stories из 5 слайдов. "
+            f"5. Полный сценарий Reels/Shorts (Хук, Реплики, Описание кадров). "
+            f"6. Рекламные офферы и Чек-лист следующих действий SMM коуча."
+        )
+
         content = await generate_ai_content(
-            topic=f"Цель: {current_goal} | Формат: {message.text}",
+            topic=topic_prompt,
             niche=niche_key,
             language=lang,
             content_type=current_tool,
@@ -669,49 +705,80 @@ async def handle_smm_generation_request(message: Message, state: FSMContext):
 
         await processing_msg.delete()
 
-        # ШАГ 4: ИНТЕРАКТИВНОЕ СОПРОВОЖДЕНИЕ ПОЛЬЗОВАТЕЛЯ (Follow-up Actions)
-        # Показываем инлайн кнопки для автоматического создания следующего этапа воронки
+        # Выводим текстовый пакет в телеграм чат (безопасно разделяя по лимитам символов Telegram)
+        await send_long_message(
+            message,
+            f"🚀 <b>TojikAI SMM Marketing Package</b>\n\n{content}"
+        )
+
+        # 2. АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ И ОТПРАВКА БРЕНДИРОВАННОГО PDF-ОТЧЕТА
+        pdf_msg = await message.answer("⚙️ <b>Создаю брендированный PDF-отчет...</b>")
+        try:
+            pdf_buffer = generate_marketing_pdf(
+                country=country,
+                language=lang,
+                niche=niche_name,
+                platform=current_tool.upper(),
+                goal=current_goal,
+                content_text=content
+            )
+            pdf_file = BufferedInputFile(pdf_buffer.getvalue(), filename=f"TojikAI_Marketing_Package_{niche_key}.pdf")
+
+            await message.answer_document(
+                pdf_file,
+                caption=f"📄 <b>TojikAI Marketing Package</b>\n\nВаш готовый, профессионально оформленный маркетинговый отчет для ниши <b>{niche_name}</b>!",
+                parse_mode="HTML"
+            )
+            await pdf_msg.delete()
+        except Exception as pdf_err:
+            await pdf_msg.edit_text(f"⚠️ Ошибка создания PDF: {str(pdf_err)}")
+
+        # 3. ИНТЕРАКТИВНЫЙ AI-КОУЧ ПОСЛЕ ГЕНЕРАЦИИ (Follow-up Actions)
         builder = InlineKeyboardBuilder()
 
         if lang == "uz":
-            btn_story = "📸 Stories yaratish"
-            btn_reels = "🎬 Reels ssenariysi"
+            btn_story = "📸 30 ta yangi g'oyalar"
+            btn_reels = "🎬 Reels ssenariylari"
             btn_plan = "📅 Kontent-reja tuzish"
-            btn_ad = "📢 Reklama yozish"
+            btn_ad = "📢 Reklama yaratish"
             btn_funnel = "🎯 Sotuv voronkasi"
+            btn_assistant = "🤖 AI g'oyalar ko'chidan so'rash"
             btn_hub = "⬅️ SMM Menuga qaytish"
         elif lang == "tg":
-            btn_story = "📸 Сохтани Stories"
-            btn_reels = "🎬 Навиштани Reels"
+            btn_story = "📸 Сохтани 30 идеяи нав"
+            btn_reels = "🎬 Сценарияҳои Reels"
             btn_plan = "📅 Нақшаи контент"
             btn_ad = "📢 Навиштани Реклама"
             btn_funnel = "🎯 Воронкаи фурӯш"
+            btn_assistant = "🤖 Савол додан ба AI-Коуч"
             btn_hub = "⬅️ Бозгашт ба менюи SMM"
         else:
-            btn_story = "📸 Создать Stories"
-            btn_reels = "🎬 Создать Reels"
-            btn_plan = "📅 Создать контент-план"
+            btn_story = "📸 Создать ещё 30 идей"
+            btn_reels = "🎬 Создать сценарии Reels"
+            btn_plan = "📅 Создать контент на месяц"
             btn_ad = "📢 Создать рекламу"
             btn_funnel = "🎯 Создать воронку продаж"
+            btn_assistant = "🤖 Спросить AI-Коуча"
             btn_hub = "⬅️ Назад в меню SMM"
 
-        builder.row(InlineKeyboardButton(text=btn_story, callback_data="qa_stories"))
+        builder.row(InlineKeyboardButton(text=btn_story, callback_data="qa_ideas"))
         builder.row(InlineKeyboardButton(text=btn_reels, callback_data="qa_reels"))
         builder.row(InlineKeyboardButton(text=btn_plan, callback_data="qa_plan"))
         builder.row(InlineKeyboardButton(text=btn_ad, callback_data="qa_ads"))
         builder.row(InlineKeyboardButton(text=btn_funnel, callback_data="qa_funnel"))
+        builder.row(InlineKeyboardButton(text=btn_assistant, callback_data="qa_assistant"))
         builder.row(InlineKeyboardButton(text=btn_hub, callback_data="go_to_smm_hub"))
 
         await message.answer(
-            content,
+            "<b>🎯 Что вы хотите сделать дальше? AI-Коуч TojikAI готов продолжить работу:</b>",
             reply_markup=builder.as_markup(),
             parse_mode="HTML"
         )
 
-        # Сохраняем генерацию в БД
+        # Сохраняем генерацию в историю БД
         await save_generation(
             user_id=user_id,
-            niche=get_niche_name(niche_key, lang),
+            niche=niche_name,
             topic=f"Платформа: {current_tool.upper()} | Цель: {current_goal} | Формат: {message.text}",
             content=content
         )
@@ -834,7 +901,7 @@ async def handle_quick_action(callback: CallbackQuery, state: FSMContext):
             content += f"\n\n─────────────\n{WATERMARK_TEXT}"
 
         await processing_msg.delete()
-        await callback.message.answer(content, reply_markup=get_share_keyboard(lang), parse_mode="HTML")
+        await send_long_message(callback.message, content, reply_markup=get_share_keyboard(lang))
     except Exception as e:
         await processing_msg.edit_text(f"❌ Ошибка: {str(e)[:100]}")
 
@@ -1135,7 +1202,7 @@ async def support_menu(message: Message, state: FSMContext):
 
 
 # ============================================
-# ГЕЙМИФИКАЦИЯ: TojikAI Empire (ЭВОЛЮЦИОНИРОВАННЫЙ БИЗНЕС-СИМУЛЯТОР)
+# ГЕЙМИФИКАЦИЯ: TojikAI Empire
 # ============================================
 
 RANKS = ["Новичок", "Предприниматель", "Бизнесмен", "Инвестор", "Магнат", "Миллионер", "Миллиардер", "Легенда бизнеса"]
@@ -1149,93 +1216,6 @@ async def start_business_game(message: Message, state: FSMContext):
 
     from database.models import get_or_create_business_empire
     profile = await get_or_create_business_empire(user_id, message.from_user.username)
-
-    level = profile.get("level", 1)
-    rank_index = min(level - 1, len(RANKS) - 1)
-    rank = RANKS[rank_index]
-
-    businesses_json = profile.get("businesses", "[]") or "[]"
-    try:
-        opened = json.loads(businesses_json)
-    except:
-        opened = []
-
-    passive_income = (profile.get("clients", 0) * 2) + (profile.get("employees", 0) * 5) + (len(opened) * 50)
-
-    if lang == "uz":
-        text = f"""<b>🚀 TojikAI Empire — Biznes va Media Simulyatori (v2.1)</b>
-
-🏆 <b>Unvoningiz:</b> {rank} ({level}-daraja)
-📍 <b>Hozirgi shahar:</b> {profile.get('city', 'Dushanbe')}
-💰 <b>Kassa:</b> {profile.get('balance', 1000)} somoni
-👥 <b>Faol mijozlar:</b> {profile.get('clients', 0)} ta
-👔 <b>Xodimlar jamoasi:</b> {profile.get('employees', 0)} ta
-🏢 <b>Ochilgan filiallar:</b> {len(opened)} ta
-
-📈 <b>Kunlik passiv daromad:</b> +{passive_income} somoni / kuniga
-
-Biznesingizni yirik shaharlarda kengaytiring, xodimlar yollang, haftalik krizis va turnirlarda g'olib bo'ling va Tojikiston hamda O'zbekistonning eng yirik tadbirkoriga aylaning!"""
-        btn_case = "🎲 Tasodifiy voqea (Keys)"
-        btn_buy = "🏢 Yangi filial ochish"
-        btn_staff = "👔 Jamoani kengaytirish"
-        btn_achieve = "🎖️ Mening yutuqlarim"
-        btn_top = "🏆 Turnir / Liderlar"
-    elif lang == "tg":
-        text = f"""<b>🚀 TojikAI Empire — Симулятори Тиҷорат ва Медиа (v2.1)</b>
-
-🏆 <b>Рутбаи шумо:</b> {rank} (Сатҳи {level})
-📍 <b>Шаҳри фаъол:</b> {profile.get('city', 'Душанбе')}
-💰 <b>Хазина:</b> {profile.get('balance', 1000)} сомонӣ
-👥 <b>Мизоҷони доимӣ:</b> {profile.get('clients', 0)} нафар
-👔 <b>Ҳайати кормандон:</b> {profile.get('employees', 0)} нафар
-🏢 <b>Филиалҳои кушода:</b> {len(opened)} адад
-
-📈 <b>Даромади пассиви рӯзона:</b> +{passive_income} сомонӣ / рӯзона
-
-Империяи худро дар шаҳрҳои калонтарин васеъ кунед, мутахассисонро ба кор гиред, квестҳои рӯзонаро иҷро кунед ва соҳибкори афсонавӣ шавед!"""
-        btn_case = "🎲 Ҳодисаи тасодуфӣ (Keys)"
-        btn_buy = "🏢 Кушодани филиали нав"
-        btn_staff = "👔 Кормандон ва Мутахассисон"
-        btn_achieve = "🎖️ Дастовардҳои ман"
-        btn_top = "🏆 Мусобиқа / Пешсафон"
-    else:
-        text = f"""<b>🚀 TojikAI Empire — Симулятор Бизнеса и Медиа (v2.1)</b>
-
-🏆 <b>Ваш ранг:</b> {rank} (Уровень {level})
-📍 <b>Текущий город:</b> {profile.get('city', 'Душанбе')}
-💰 <b>Баланс Кассы:</b> {profile.get('balance', 1000)} сомони
-👥 <b>Клиенты:</b> {profile.get('clients', 0)} чел.
-👔 <b>Сотрудники в штате:</b> {profile.get('employees', 0)} чел.
-🏢 <b>Открытые филиалы:</b> {len(opened)} шт.
-
-📊 <b>Пассивный доход:</b> +{passive_income} сомони / день
-
-Развивайте свою Бизнес-Империю в Душанбе, Худжанде и Ташкенте! Нанимайте персонал, проходите уникальные еженедельные ивенты и завоевывайте турнирную таблицу лидеров!"""
-        btn_case = "🎲 Случайное событие (Кейс)"
-        btn_buy = "🏢 Открыть новый филиал"
-        btn_staff = "👔 Нанять персонал"
-        btn_achieve = "🎖️ Мои Достижения"
-        btn_top = "🏆 Турниры / Лидеры"
-
-    builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text=btn_case, callback_data="game_event"))
-    builder.row(InlineKeyboardButton(text=btn_buy, callback_data="game_buy_list"))
-    builder.row(InlineKeyboardButton(text=btn_staff, callback_data="game_staff_list"))
-    builder.row(InlineKeyboardButton(text=btn_achieve, callback_data="game_achievements"))
-    builder.row(InlineKeyboardButton(text=btn_top, callback_data="game_leaders"))
-
-    await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
-
-
-@router.callback_query(F.data == "game_back")
-async def handle_game_back(callback: CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    user = await get_user(user_id)
-    lang = user.get("language", "ru") if user else "ru"
-    await state.update_data(language=lang)
-
-    from database.models import get_or_create_business_empire
-    profile = await get_or_create_business_empire(user_id, callback.from_user.username)
 
     level = profile.get("level", 1)
     rank_index = min(level - 1, len(RANKS) - 1)
@@ -1304,6 +1284,72 @@ async def handle_game_back(callback: CallbackQuery, state: FSMContext):
     builder.row(InlineKeyboardButton(text=btn_staff, callback_data="game_staff_list"))
     builder.row(InlineKeyboardButton(text=btn_achieve, callback_data="game_achievements"))
     builder.row(InlineKeyboardButton(text=btn_top, callback_data="game_leaders"))
+
+    await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "game_back")
+async def handle_game_back(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    await state.update_data(language=lang)
+
+    from database.models import get_or_create_business_empire
+    profile = await get_or_create_business_empire(user_id, callback.from_user.username)
+
+    level = profile.get("level", 1)
+    rank_index = min(level - 1, len(RANKS) - 1)
+    rank = RANKS[rank_index]
+
+    businesses_json = profile.get("businesses", "[]") or "[]"
+    try:
+        opened = json.loads(businesses_json)
+    except:
+        opened = []
+
+    passive_income = (profile.get("clients", 0) * 2) + (profile.get("employees", 0) * 5) + (len(opened) * 50)
+
+    if lang == "uz":
+        text = f"""<b>🚀 TojikAI Empire — Biznes va Media Simulyatori (v2.1)</b>
+
+🏆 <b>Unvoningiz:</b> {rank} ({level}-daraja)
+📍 <b>Hozirgi shahar:</b> {profile.get('city', 'Dushanbe')}
+💰 <b>Kassa:</b> {profile.get('balance', 1000)} somoni
+👥 <b>Faol mijozlar:</b> {profile.get('clients', 0)} ta
+👔 <b>Xodimlar jamoasi:</b> {profile.get('employees', 0)} ta
+🏢 <b>Ochilgan filiallar:</b> {len(opened)} ta
+
+📈 <b>Kunlik passiv daromad:</b> +{passive_income} somoni / kuniga"""
+    elif lang == "tg":
+        text = f"""<b>🚀 TojikAI Empire — Симулятори Тиҷорат ва Медиа (v2.1)</b>
+
+🏆 <b>Рутбаи шумо:</b> {rank} (Сатҳи {level})
+📍 <b>Шаҳри фаъол:</b> {profile.get('city', 'Душанбе')}
+💰 <b>Хазина:</b> {profile.get('balance', 1000)} сомонӣ
+👥 <b>Мизоҷони доимӣ:</b> {profile.get('clients', 0)} нафар
+👔 <b>Ҳайати кормандон:</b> {profile.get('employees', 0)} нафар
+🏢 <b>Филиалҳои кушода:</b> {len(opened)} адад
+
+📈 <b>Даромади пассиви рӯзона:</b> +{passive_income} сомонӣ / рӯзона"""
+    else:
+        text = f"""<b>🚀 TojikAI Empire — Симулятор Бизнеса и Медиа (v2.1)</b>
+
+🏆 <b>Ваш ранг:</b> {rank} (Уровень {level})
+📍 <b>Текущий город:</b> {profile.get('city', 'Душанбе')}
+💰 <b>Баланс Кассы:</b> {profile.get('balance', 1000)} сомони
+👥 <b>Клиенты:</b> {profile.get('clients', 0)} чел.
+👔 <b>Сотрудники в штате:</b> {profile.get('employees', 0)} чел.
+🏢 <b>Открытые филиалы:</b> {len(opened)} шт.
+
+📊 <b>Пассивный доход:</b> +{passive_income} сомони / день"""
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🎲 Tasodifiy voqea", callback_data="game_event"))
+    builder.row(InlineKeyboardButton(text="🏢 Yangi filial", callback_data="game_buy_list"))
+    builder.row(InlineKeyboardButton(text="👔 Jamoani kengaytirish", callback_data="game_staff_list"))
+    builder.row(InlineKeyboardButton(text="🎖️ Mening yutuqlarim", callback_data="game_achievements"))
+    builder.row(InlineKeyboardButton(text="🏆 Turnir / Liderlar", callback_data="game_leaders"))
 
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
@@ -1410,7 +1456,7 @@ async def handle_game_event_choice(callback: CallbackQuery, state: FSMContext):
             res_msg += f"\n🎉 <b>Поздравляем! Ваш уровень вырос до {new_level}! Новый ранг: {new_rank}, открыт новый город: {new_city}!</b>"
 
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="⬅️ Назад в империю / Бозгашт", callback_data="game_back"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад в империю", callback_data="game_back"))
 
     await callback.message.edit_text(res_msg, reply_markup=builder.as_markup(), parse_mode="HTML")
     await state.clear()
@@ -1445,7 +1491,7 @@ async def handle_game_buy_list(callback: CallbackQuery):
         if not is_opened:
             builder.row(InlineKeyboardButton(text=f"Купить {name}", callback_data=f"game_buy_{b_key}"))
 
-    builder.row(InlineKeyboardButton(text="⬅️ Назад / Бозгашт", callback_data="game_back"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="game_back"))
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
@@ -1537,7 +1583,7 @@ async def handle_game_staff_list(callback: CallbackQuery):
     builder.row(InlineKeyboardButton(text="🚛 Нанять Водителя", callback_data="staff_buy_drivers"))
     builder.row(InlineKeyboardButton(text="🧮 Нанять Бухгалтера", callback_data="staff_buy_accountants"))
     builder.row(InlineKeyboardButton(text="⚖️ Нанять Юриста", callback_data="staff_buy_lawyers"))
-    builder.row(InlineKeyboardButton(text="⬅️ Назад / Бозгашт", callback_data="game_back"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="game_back"))
 
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
@@ -1610,7 +1656,7 @@ async def handle_game_achievements(callback: CallbackQuery):
         text += f"• <b>{title}</b> — {desc}\n  Статус: <i>{status}</i>\n\n"
 
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="⬅️ Назад / Бозгашт", callback_data="game_back"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="game_back"))
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
@@ -1634,7 +1680,45 @@ async def handle_game_leaders(callback: CallbackQuery):
         text += f"{i}. <b>{name}</b> — Уровень: {l['level']} | Баланс: {l['balance']} TJS\n"
 
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="⬅️ Назад / Бозгашт", callback_data="game_back"))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="game_back"))
 
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
+
+
+# ============================================
+# CALLBACK: ПОДЕЛИТЬСЯ И ОЦЕНИТЬ
+# ============================================
+
+@router.callback_query(F.data == "share_content")
+async def share_content(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+
+    from database.models import add_bonus_generation
+    await add_bonus_generation(user_id, 1)
+
+    text = "✅ +1 генерация за мубодила/шеринг!"
+    await callback.answer(text, show_alert=True)
+
+
+# ============================================
+# ОБРАБОТКА НЕИЗВЕСТНЫХ СООБЩЕНИЙ
+# ============================================
+
+@router.message()
+async def unknown_message(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    await state.update_data(language=lang)
+
+    if lang == "uz":
+        text = "❓ Buyruqni tushunmadim. Pastdagi menudan foydalaning."
+    elif lang == "tg":
+        text = "❓ Ман фармонро нафаҳмидам. Аз менюи поён истифода баред."
+    else:
+        text = "❓ Я не понял команду. Используйте меню ниже."
+
+    await message.answer(text, reply_markup=get_main_menu(lang))
