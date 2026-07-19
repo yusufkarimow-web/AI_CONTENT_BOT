@@ -5,14 +5,18 @@ from content_engine.niche_manager import get_all_niches
 
 
 def get_niche_menu(language: str = "ru", country: str = "uz") -> ReplyKeyboardMarkup:
-    """Динамическое меню выбора ниши бизнеса в зависимости от страны и языка"""
+    """Динамическое меню выбора ниши бизнеса в зависимости от страны и языка.
+    Показывает все доступные ниши (>50 на страну) с иконками.
+    """
     niches = get_all_niches(language, country)
 
     buttons = []
     row = []
     for niche in niches:
+        icon = niche.get("icon", "")
         name = niche.get(f"name_{language}", niche.get("name_ru"))
-        row.append(KeyboardButton(text=name))
+        btn_text = f"{icon} {name}".strip()
+        row.append(KeyboardButton(text=btn_text))
         if len(row) == 2:
             buttons.append(row)
             row = []

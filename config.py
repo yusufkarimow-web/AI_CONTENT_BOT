@@ -366,7 +366,7 @@ class Settings(BaseSettings):
 
         return f"""
 ╔══════════════════════════════════════════╗
-║     SOZANDA BOT v2.0 — ДИАГНОСТИКА       ║
+║     TOJIKAI BOT v2.0 — ДИАГНОСТИКА       ║
 ╠══════════════════════════════════════════╣
 ║ Бот: @{self.bot_username}
 ║ Окружение: {self.env.upper()}
