@@ -324,18 +324,76 @@ def get_all_niches(language: str = "ru", country: str = "uz") -> List[dict]:
 
 def get_topics(key: str, count: int, language: str = "ru") -> List[str]:
     """
-    Получить список тем для ниши
+    Получить список тем для ниши.
+    Если запрашиваемое количество больше, чем есть в базе,
+    генерирует дополнительные динамические темы на лету,
+    чтобы гарантировать выдачу ровно count штук без повторений.
     """
     niche = get_niche(key, language)
     if not niche:
         return []
 
     field = f"topics_{language}"
-    topics = niche.get(field, niche.get("topics_ru", []))
+    topics = list(niche.get(field, niche.get("topics_ru", [])))
 
-    # Перемешиваем и берём нужное количество
-    selected = random.sample(topics, min(count, len(topics)))
+    if not topics:
+        topics = ["Развитие и масштабирование вашего дела", "Секреты привлечения новых лояльных клиентов"]
 
+    # Если тем меньше, чем просит пользователь (например, просит 10, 20 или 30, а в JSON только 5)
+    if len(topics) < count:
+        needed = count - len(topics)
+        niche_name = get_niche_name(key, language)
+
+        # Динамические шаблоны генерации тем
+        if language == "uz":
+            templates = [
+                f"{niche_name} sohasida xatolar va ulardan qochish yo'llari",
+                f"Muvaffaqiyatli {niche_name} biznesining 5 ta oltin qoidasi",
+                f"Nega aynan bizning {niche_name} xizmatimizni tanlashadi?",
+                f"Mijozlarni jalb qilishning yangi va samarali usullari",
+                f"2026-yilda {niche_name} sohasidagi asosiy va muhim trendlar",
+                f"Sifatli {niche_name} va uning sirlari",
+                f"Qanday qilib {niche_name} orqali daromadni 2 barobar oshirish mumkin?",
+                f"Tadbirkorlar uchun {niche_name} bo'yicha amaliy qo'llanma",
+                f"Tez va xavfsiz {niche_name} xizmatlari",
+                f"Mijozlarimiz tomonidan eng ko'p beriladigan savollarga javoblar"
+            ]
+        elif language == "tg":
+            templates = [
+                f"Хатогиҳои асосӣ дар соҳаи {niche_name} ва пешгирии онҳо",
+                f"5 қоидаи тиллоӣ барои муваффақияти {niche_name}",
+                f"Чаро мизоҷон маҳз хизматрасонии {niche_name}-и моро интихоб мекунанд",
+                f"Роҳҳои муосири ҷалби мизоҷони нав ба {niche_name}",
+                f"Трендҳои муҳими соҳаи {niche_name} дар соли 2026",
+                f"Сирри сифати баланди {niche_name} дар чист?",
+                f"Чӣ тавр даромади худро дар {niche_name} 2 баробар зиёд кунем",
+                f"Дастури амалӣ оид ба {niche_name} барои соҳибкорон",
+                f"Хизматрасониҳои зуд ва боэътимоди {niche_name}",
+                f"Ҷавобҳо ба саволҳои бештар додашавандаи мизоҷон"
+            ]
+        else:
+            templates = [
+                f"Главные ошибки в сфере {niche_name} и как их избежать",
+                f"5 золотых правил успешного бизнеса: {niche_name}",
+                f"Почему клиенты выбирают именно наши услуги в {niche_name}",
+                f"Современные методы привлечения клиентов в {niche_name}",
+                f"Важные тренды в сфере {niche_name} на 2026 год",
+                f"В чем секрет высокого качества услуг {niche_name}?",
+                f"Как удвоить прибыль в бизнесе {niche_name}",
+                f"Практическое руководство по {niche_name} для предпринимателей",
+                f"Быстрые и надежные услуги {niche_name}",
+                f"Ответы на самые часто задаваемые вопросы клиентов"
+            ]
+
+        random.shuffle(templates)
+        for i in range(needed):
+            # Создаем уникальные темы
+            new_theme = templates[i % len(templates)]
+            if needed > len(templates):
+                new_theme += f" (часть {i // len(templates) + 1})"
+            topics.append(new_theme)
+
+    selected = random.sample(topics, count)
     return selected
 
 

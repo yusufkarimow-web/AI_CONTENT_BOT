@@ -175,6 +175,20 @@ async def init_db():
             )
         """)
 
+        # === ТАБЛИЦА БИЗНЕС ИМПЕРИИ ===
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_business_empire (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                balance INTEGER DEFAULT 1000,
+                clients INTEGER DEFAULT 0,
+                employees INTEGER DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                xp INTEGER DEFAULT 0,
+                businesses TEXT DEFAULT '[]'
+            )
+        """)
+
         await db.execute("""
             CREATE TABLE IF NOT EXISTS leaderboard_cache (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

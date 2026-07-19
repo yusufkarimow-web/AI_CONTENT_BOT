@@ -125,6 +125,9 @@ from aiogram.fsm.state import State, StatesGroup
 class QuizStates(StatesGroup):
     answering = State()
 
+class GameStates(StatesGroup):
+    answering_event = State()
+
 # ============================================
 # ГЛАВНОЕ МЕНЮ — Callback
 # ============================================
@@ -350,82 +353,391 @@ async def history_menu(message: Message):
     await message.answer(text, parse_mode="HTML")
 
 
-@router.message(F.text.in_(["🎮 Бизнес-Игра", "🎮 Бозии тиҷорат", "🎮 Biznes o'yini"]))
+# ============================================
+# ГЕЙМИФИКАЦИЯ: БИЗНЕС ИМПЕРИЯ
+# ============================================
+
+@router.message(F.text.in_(["🎮 Бизнес-Игра", "🎮 Бозии тиҷорат", "🎮 Biznes o'yini", "🎮 Бизнес Империя"]))
 async def start_business_game(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
-    country = user.get("country", "uz") if user else "uz"
     user_languages[user_id] = lang
 
-    from gamification.scenarios import QUIZ_SCENARIOS
-    country_scenarios = QUIZ_SCENARIOS.get(country, QUIZ_SCENARIOS["uz"])
-    scenario_data = random.choice(country_scenarios)
+    from database.models import get_or_create_business_empire
+    profile = await get_or_create_business_empire(user_id, message.from_user.username)
 
-    # Сохраняем правильный ответ и пояснение в FSM
-    await state.set_state(QuizStates.answering)
-    await state.update_data(
-        correct_option=scenario_data["correct"],
-        explanation=scenario_data["explanation"].get(lang, scenario_data["explanation"]["ru"]),
-        lang=lang
-    )
+    # Рассчитываем ежедневный доход от бизнесов на основе количества клиентов
+    import json
+    try:
+        opened = json.loads(profile["businesses"] or "[]")
+    except:
+        opened = []
 
-    # Получаем локализованные тексты
-    scenario_text = scenario_data["scenario"].get(lang, scenario_data["scenario"]["ru"])
-    options = scenario_data["options"].get(lang, scenario_data["options"]["ru"])
+    from gamification.scenarios import BUSINESS_TYPES
+    passive_income = 0
+    for b_key in opened:
+        b_meta = BUSINESS_TYPES.get(b_key)
+        if b_meta:
+            passive_income += b_meta["income_per_client"] * (profile["clients"] or 1)
 
-    text = f"<b>🎮 {message.text}</b>\n\n"
-    text += f"{scenario_text}\n\n"
-    for opt_key, opt_text in options.items():
-        text += f"<b>{opt_key}.</b> {opt_text}\n"
+    # Текстовка
+    if lang == "uz":
+        text = f"""<b>🎮 Biznes Imperiya — Sarlavha</b>
 
-    # Клавиатура с вариантами ответа А, Б, В
+Sizning imperiyangiz holati:
+🏆 <b>Daraja (Level):</b> {profile['level']} ({profile['xp']} XP)
+💰 <b>Balans:</b> {profile['balance']} somoni
+👥 <b>Mijozlar:</b> {profile['clients']} ta
+👔 <b>Xodimlar:</b> {profile['employees']} ta
+📈 <b>Bizneslar soni:</b> {len(opened)} ta
+
+📊 <b>Suhbat / Passiv daromad:</b> +{passive_income} somoni / kuniga
+
+Biznesingizni kengaytiring, tasodifiy voqealarni hal qiling va eng boy tadbirkorga aylaning!"""
+        btn_case = "🎲 Tasodifiy voqea (Keys)"
+        btn_buy = "🏢 Yangi biznes ochish"
+        btn_top = "🏆 Liderlar jadvali"
+    elif lang == "tg":
+        text = f"""<b>🎮 Бизнес Империя — Саҳифаи Асосӣ</b>
+
+Ҳолати империяи шумо:
+🏆 <b>Сатҳ (Level):</b> {profile['level']} ({profile['xp']} XP)
+💰 <b>Баланс:</b> {profile['balance']} сомонӣ
+👥 <b>Мизоҷон:</b> {profile['clients']} нафар
+👔 <b>Кормандон:</b> {profile['employees']} нафар
+📈 <b>Шумораи тиҷоратҳо:</b> {len(opened)} адад
+
+📊 <b>Даромади ғайрифаъол:</b> +{passive_income} сомонӣ / рӯзона
+
+Тиҷорати худро васеъ кунед, чорабиниҳои тасодуфиро ҳал намоед ва соҳибкори муваффақ шавед!"""
+        btn_case = "🎲 Ҳодисаи тасодуфӣ (Keys)"
+        btn_buy = "🏢 Кушодани тиҷорати нав"
+        btn_top = "🏆 Ҷадвали пешсафон"
+    else:
+        text = f"""<b>🎮 Бизнес Империя — Главная панель</b>
+
+Статус вашей империи:
+🏆 <b>Уровень:</b> {profile['level']} ({profile['xp']} XP)
+💰 <b>Баланс:</b> {profile['balance']} сомони
+👥 <b>Клиенты:</b> {profile['clients']} чел.
+👔 <b>Сотрудники:</b> {profile['employees']} чел.
+📈 <b>Количество бизнесов:</b> {len(opened)} шт.
+
+📊 <b>Пассивный доход:</b> +{passive_income} сомони / день
+
+Развивайте предприятия, решайте сложные кейсы и станьте топ-предпринимателем Центральной Азии!"""
+        btn_case = "🎲 Случайное событие (Кейс)"
+        btn_buy = "🏢 Открыть новый бизнес"
+        btn_top = "🏆 Таблица лидеров"
+
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="А", callback_data="quiz_ans_A"),
-        InlineKeyboardButton(text="Б", callback_data="quiz_ans_B"),
-        InlineKeyboardButton(text="В", callback_data="quiz_ans_C")
-    )
+    builder.row(InlineKeyboardButton(text=btn_case, callback_data="game_event"))
+    builder.row(InlineKeyboardButton(text=btn_buy, callback_data="game_buy_list"))
+    builder.row(InlineKeyboardButton(text=btn_top, callback_data="game_leaders"))
 
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
 
-@router.callback_query(QuizStates.answering, F.data.startswith("quiz_ans_"))
-async def handle_quiz_answer(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == "game_back")
+async def handle_game_back(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+
+    from database.models import get_or_create_business_empire
+    profile = await get_or_create_business_empire(user_id, callback.from_user.username)
+    import json
+    try:
+        opened = json.loads(profile["businesses"] or "[]")
+    except:
+        opened = []
+
+    from gamification.scenarios import BUSINESS_TYPES
+    passive_income = 0
+    for b_key in opened:
+        b_meta = BUSINESS_TYPES.get(b_key)
+        if b_meta:
+            passive_income += b_meta["income_per_client"] * (profile["clients"] or 1)
+
+    if lang == "uz":
+        text = f"""<b>🎮 Biznes Imperiya — Sarlavha</b>
+
+Sizning imperiyangiz holati:
+🏆 <b>Daraja (Level):</b> {profile['level']} ({profile['xp']} XP)
+💰 <b>Balans:</b> {profile['balance']} somoni
+👥 <b>Mijozlar:</b> {profile['clients']} ta
+👔 <b>Xodimlar:</b> {profile['employees']} ta
+📈 <b>Bizneslar soni:</b> {len(opened)} ta
+
+📊 <b>Suhbat / Passiv daromad:</b> +{passive_income} somoni / kuniga"""
+        btn_case = "🎲 Tasodifiy voqea (Keys)"
+        btn_buy = "🏢 Yangi biznes ochish"
+        btn_top = "🏆 Liderlar jadvali"
+    elif lang == "tg":
+        text = f"""<b>🎮 Бизнес Империя — Саҳифаи Асосӣ</b>
+
+Ҳолати империяи шумо:
+🏆 <b>Сатҳ (Level):</b> {profile['level']} ({profile['xp']} XP)
+💰 <b>Баланс:</b> {profile['balance']} сомонӣ
+👥 <b>Мизоҷон:</b> {profile['clients']} нафар
+👔 <b>Кормандон:</b> {profile['employees']} нафар
+📈 <b>Шумораи тиҷоратҳо:</b> {len(opened)} адад
+
+📊 <b>Даромади ғайрифаъол:</b> +{passive_income} сомонӣ / рӯзона"""
+        btn_case = "🎲 Ҳодисаи тасодуфӣ (Keys)"
+        btn_buy = "🏢 Кушодани тиҷорати нав"
+        btn_top = "🏆 Ҷадвали пешсафон"
+    else:
+        text = f"""<b>🎮 Бизнес Империя — Главная панель</b>
+
+Статус вашей империи:
+🏆 <b>Уровень:</b> {profile['level']} ({profile['xp']} XP)
+💰 <b>Баланс:</b> {profile['balance']} сомони
+👥 <b>Клиенты:</b> {profile['clients']} чел.
+👔 <b>Сотрудники:</b> {profile['employees']} чел.
+📈 <b>Количество бизнесов:</b> {len(opened)} шт.
+
+📊 <b>Пассивный доход:</b> +{passive_income} сомони / день"""
+        btn_case = "🎲 Случайное событие (Кейс)"
+        btn_buy = "🏢 Открыть новый бизнес"
+        btn_top = "🏆 Таблица лидеров"
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text=btn_case, callback_data="game_event"))
+    builder.row(InlineKeyboardButton(text=btn_buy, callback_data="game_buy_list"))
+    builder.row(InlineKeyboardButton(text=btn_top, callback_data="game_leaders"))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "game_event")
+async def handle_game_event(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+
+    from gamification.scenarios import BUSINESS_EMPIRE_EVENTS
+    event = random.choice(BUSINESS_EMPIRE_EVENTS)
+
+    # Сохраняем событие в FSM
+    await state.set_state(GameStates.answering_event)
+    await state.update_data(current_event=event, lang=lang)
+
+    text_key = f"text_{lang}"
+    event_desc = event.get(text_key, event["text_ru"])
+
+    text = f"<b>🎲 Случайное событие / Ҳодисаи тасодуфӣ</b>\n\n{event_desc}\n\n"
+
+    builder = InlineKeyboardBuilder()
+
+    options = event["options"]
+    for opt_key, opt_data in options.items():
+        opt_text = opt_data.get(f"text_{lang}", opt_data["text_ru"])
+        text += f"<b>{opt_key}.</b> {opt_text}\n"
+        builder.row(InlineKeyboardButton(text=f"Выбрать {opt_key} / Интихоб {opt_key}", callback_data=f"ge_opt_{opt_key}"))
+
+    builder.row(InlineKeyboardButton(text="⬅️ Назад / Бозгашт", callback_data="game_back"))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(GameStates.answering_event, F.data.startswith("ge_opt_"))
+async def handle_game_event_choice(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
     data = await state.get_data()
-    correct_option = data.get("correct_option")
-    explanation = data.get("explanation")
+    event = data.get("current_event")
     lang = data.get("lang", "ru")
 
-    user_ans = callback.data.replace("quiz_ans_", "")
+    choice = callback.data.replace("ge_opt_", "")
+    opt_data = event["options"][choice]
 
-    if user_ans == correct_option:
-        # Начисляем баллы
-        from database.models import update_user_xp
-        await update_user_xp(user_id, 20)
-        if lang == "uz":
-            result_msg = "🎉 <b>To'g'ri javob!</b>\n\nSizga 20 XP ball taqdim etildi."
-        elif lang == "tg":
-            result_msg = "🎉 <b>Ҷавоби дуруст!</b>\n\nШумо 20 XP хол ба даст овардед."
-        else:
-            result_msg = "🎉 <b>Правильный ответ!</b>\n\nВам начислено 20 баллов опыта (XP)."
+    from database.models import get_or_create_business_empire, update_business_empire
+    profile = await get_or_create_business_empire(user_id, callback.from_user.username)
+
+    # Применяем изменения
+    new_balance = max(0, profile["balance"] + opt_data.get("balance_diff", 0))
+    new_clients = max(0, profile["clients"] + opt_data.get("clients_diff", 0))
+    new_employees = max(0, profile["employees"] + opt_data.get("employees_diff", 0))
+    new_xp = profile["xp"] + opt_data.get("xp_diff", 0)
+
+    # Расчет нового уровня: 100 XP на уровень
+    new_level = (new_xp // 100) + 1
+    if new_level != profile["level"]:
+        level_up = True
     else:
-        # Замораживаем/уменьшаем лимиты генерации в качестве штрафа
-        from database.models import freeze_or_decrement_limit
-        await freeze_or_decrement_limit(user_id)
-        if lang == "uz":
-            result_msg = f"❌ <b>Noto'g'ri javob!</b> (To'g'ri javob: {correct_option})\n\nJarima sifatida kunlik limitlaringiz kamaytirildi/muzlatildi."
-        elif lang == "tg":
-            result_msg = f"❌ <b>Ҷавоби нодуруст!</b> (Ҷавоби дуруст: {correct_option})\n\nҲамчун ҷарима лимити генерацияи имрӯзаи шумо кам/ях карда шуд."
-        else:
-            result_msg = f"❌ <b>Неправильный ответ!</b> (Правильный ответ: {correct_option})\n\nВ качестве штрафа ваши лимиты генераций на сегодня были уменьшены/заморожены."
+        level_up = False
 
-    if explanation:
-        result_msg += f"\n\n💡 {explanation}"
+    await update_business_empire(
+        user_id=user_id,
+        balance=new_balance,
+        clients=new_clients,
+        employees=new_employees,
+        level=new_level,
+        xp=new_xp,
+        businesses=profile["businesses"]
+    )
 
-    await callback.message.edit_text(result_msg, parse_mode="HTML")
+    # Локализованное резюме результатов
+    diff_text = ""
+    if opt_data.get("balance_diff", 0) != 0:
+        diff_text += f"💰 {'+' if opt_data['balance_diff'] > 0 else ''}{opt_data['balance_diff']} сомони\n"
+    if opt_data.get("clients_diff", 0) != 0:
+        diff_text += f"👥 {'+' if opt_data['clients_diff'] > 0 else ''}{opt_data['clients_diff']} клиентов/мизоҷон\n"
+    if opt_data.get("employees_diff", 0) != 0:
+        diff_text += f"👔 {'+' if opt_data['employees_diff'] > 0 else ''}{opt_data['employees_diff']} сотрудников\n"
+    if opt_data.get("xp_diff", 0) != 0:
+        diff_text += f"🏆 +{opt_data['xp_diff']} XP\n"
+
+    if lang == "uz":
+        res_msg = f"<b>Результаты вашего выбора:</b>\n\n{diff_text}"
+        if level_up:
+            res_msg += f"\n🎉 <b>Darajangiz oshdi! Yangi daraja: {new_level}!</b>"
+    elif lang == "tg":
+        res_msg = f"<b>Натиҷаи интихоби шумо:</b>\n\n{diff_text}"
+        if level_up:
+            res_msg += f"\n🎉 <b>Сатҳи шумо баланд шуд! Сатҳи нав: {new_level}!</b>"
+    else:
+        res_msg = f"<b>Результаты вашего решения:</b>\n\n{diff_text}"
+        if level_up:
+            res_msg += f"\n🎉 <b>Поздравляем! Ваш уровень вырос до {new_level}!</b>"
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⬅️ Назад в империю / Бозгашт", callback_data="game_back"))
+
+    await callback.message.edit_text(res_msg, reply_markup=builder.as_markup(), parse_mode="HTML")
     await state.clear()
+    await callback.answer()
+
+
+@router.callback_query(F.data == "game_buy_list")
+async def handle_game_buy_list(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+
+    from database.models import get_or_create_business_empire
+    profile = await get_or_create_business_empire(user_id, callback.from_user.username)
+    import json
+    try:
+        opened = json.loads(profile["businesses"] or "[]")
+    except:
+        opened = []
+
+    from gamification.scenarios import BUSINESS_TYPES
+    text = "<b>🏢 Открытие нового бизнеса / Кушодани тиҷорати нав</b>\n\n"
+
+    builder = InlineKeyboardBuilder()
+    for b_key, b_data in BUSINESS_TYPES.items():
+        is_opened = b_key in opened
+        name = b_data[f"name_{lang}"] if f"name_{lang}" in b_data else b_data["name_ru"]
+        desc = b_data[f"desc_{lang}"] if f"desc_{lang}" in b_data else b_data["desc_ru"]
+
+        status_symbol = "✅ Открыто" if is_opened else f"🛒 Купить за {b_data['cost']} сомони (Требуется уровень {b_data['required_level']})"
+        text += f"• <b>{name}</b>\n   {desc}\n   Статус: <i>{status_symbol}</i>\n\n"
+
+        if not is_opened:
+            builder.row(InlineKeyboardButton(text=f"Купить {name}", callback_data=f"game_buy_{b_key}"))
+
+    builder.row(InlineKeyboardButton(text="⬅️ Назад / Бозгашт", callback_data="game_back"))
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("game_buy_"))
+async def handle_game_buy_action(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    b_key = callback.data.replace("game_buy_", "")
+
+    from database.models import get_or_create_business_empire, update_business_empire
+    profile = await get_or_create_business_empire(user_id, callback.from_user.username)
+    import json
+    try:
+        opened = json.loads(profile["businesses"] or "[]")
+    except:
+        opened = []
+
+    from gamification.scenarios import BUSINESS_TYPES
+    b_data = BUSINESS_TYPES.get(b_key)
+
+    if not b_data:
+        await callback.answer("Ошибка данных", show_alert=True)
+        return
+
+    if b_key in opened:
+        await callback.answer("Этот бизнес уже открыт!", show_alert=True)
+        return
+
+    if profile["level"] < b_data["required_level"]:
+        if lang == "tg":
+            msg = f"❌ Сатҳи шумо нокофӣ аст! Сатҳи {b_data['required_level']} лозим аст."
+        else:
+            msg = f"❌ Ваш уровень слишком мал! Требуется уровень {b_data['required_level']}."
+        await callback.answer(msg, show_alert=True)
+        return
+
+    if profile["balance"] < b_data["cost"]:
+        if lang == "tg":
+            msg = f"❌ Маблағи нокофӣ! {b_data['cost']} сомонӣ лозим аст."
+        else:
+            msg = f"❌ Недостаточно средств! Требуется {b_data['cost']} сомони."
+        await callback.answer(msg, show_alert=True)
+        return
+
+    # Совершаем покупку
+    new_balance = profile["balance"] - b_data["cost"]
+    opened.append(b_key)
+
+    # Даем клиенты и сотрудники за покупку
+    new_clients = profile["clients"] + random.randint(10, 30)
+    new_employees = profile["employees"] + 1
+
+    await update_business_empire(
+        user_id=user_id,
+        balance=new_balance,
+        clients=new_clients,
+        employees=new_employees,
+        level=profile["level"],
+        xp=profile["xp"] + 50, # Даем XP за покупку
+        businesses=json.dumps(opened)
+    )
+
+    if lang == "tg":
+        msg = f"🎉 Табрик! Шумо {b_data['name_tg']} кушодед!"
+    else:
+        msg = f"🎉 Поздравляем! Вы успешно открыли {b_data['name_ru']}!"
+
+    await callback.answer(msg, show_alert=True)
+    await handle_game_buy_list(callback)
+
+
+@router.callback_query(F.data == "game_leaders")
+async def handle_game_leaders(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+
+    from database.models import get_business_empire_leaderboard
+    leaders = await get_business_empire_leaderboard(limit=10)
+
+    if lang == "tg":
+        text = "<b>🏆 Ҷадвали пешсафони Бизнес Империя</b>\n\n"
+    else:
+        text = "<b>🏆 Лидеры Бизнес Империи</b>\n\n"
+
+    for i, l in enumerate(leaders, 1):
+        name = l["username"] or f"Игрок_{l['user_id']}"
+        text += f"{i}. <b>{name}</b> — Сатҳ/Уровень: {l['level']} | Баланс: {l['balance']} сомони\n"
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⬅️ Назад / Бозгашт", callback_data="game_back"))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
 
@@ -440,16 +752,35 @@ async def support_menu(message: Message):
 
 
 @router.message(F.text.in_(["⬅️ Назад", "⬅️ Бозгашт", "⬅️ Ortga"]))
-async def back_button(message: Message):
+async def back_button(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     user_languages[user_id] = lang
 
+    # Полный сброс состояния при нажатии Назад в главное меню
+    await state.clear()
+
     await message.answer(
         get_text(user_id, "main_menu"),
         reply_markup=get_main_menu(lang)
     )
+
+
+@router.callback_query(F.data == "topic_back")
+async def handle_topic_back(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    country = user.get("country", "uz") if user else "uz"
+
+    # Возвращаем на выбор ниши
+    await state.clear()
+    await callback.message.answer(
+        get_text(user_id, "choose_niche"),
+        reply_markup=get_niche_menu(lang, country=country)
+    )
+    await callback.answer()
 
 
 # ============================================
@@ -488,14 +819,24 @@ async def niche_selected(message: Message, state: FSMContext):
 # ВЫБОР КОЛИЧЕСТВА ИДЕЙ
 # ============================================
 
-@router.message(F.text.regexp(r"^(\d+)\s+(иде(й|я)|идея|идеяҳо|g'oya|ta g'oya)$"))
+def is_count_button(text: str) -> bool:
+    cleaned = text.lower()
+    # Ищет подстроки, соответствующие кнопкам выбора количества идей
+    return any(x in cleaned for x in ["идей", "идея", "идеяҳо", "g'oya"])
+
+@router.message(lambda msg: is_count_button(msg.text))
 async def show_topics(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     user_languages[user_id] = lang
 
-    count = int(message.text.split()[0])
+    # Извлекаем только цифры из текста кнопки
+    digits = "".join(c for c in message.text if c.isdigit())
+    if not digits:
+        await message.answer("❌ Пожалуйста, выберите количество из клавиатуры.")
+        return
+    count = int(digits)
 
     # Проверка на суперадмина
     is_admin = (str(user_id) == str(ADMIN_ID))

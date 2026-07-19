@@ -1,188 +1,211 @@
-# gamification/scenarios.py — Сценарии бизнес-игры для Таджикистана и Узбекистана
+# gamification/scenarios.py — Бизнес-кейсы и случайные события для игры "Бизнес Империя"
 
-QUIZ_SCENARIOS = {
-    "uz": [
-        {
-            "scenario": {
-                "ru": "У вас упали продажи текстиля на рынке Чорсу в Ташкенте из-за высокой конкуренции. Что предпримете?",
-                "tg": "Фурӯши бофандагии шумо дар бозори Чорсуи Тошканд аз сабаби рақобати баланд кам шуд. Чӣ кор мекунед?",
-                "uz": "Toshkentdagi Chorsu bozorida raqobat kuchliligi sababli to'qimachilik (tekstil) savdongiz tushib ketdi. Nima qilasiz?"
+BUSINESS_EMPIRE_EVENTS = [
+    {
+        "text_ru": "Клиент оставил восторженный отзыв о вашем сервисе в соцсетях!",
+        "text_tg": "Мизоҷ дар шабакаҳои иҷтимоӣ дар бораи хизматрасонии шумо фикру мулоҳизаҳои олӣ гузошт!",
+        "text_uz": "Mijoz ijtimoiy tarmoqlarda xizmatingiz haqida ajoyib fikr qoldirdi!",
+        "options": {
+            "A": {
+                "text_ru": "Репостнуть отзыв и поблагодарить (бонус клиентов)",
+                "text_tg": "Фикри мизоҷро репост кунед ва ташаккур гӯед (бонуси мизоҷон)",
+                "text_uz": "Fikrni ulashing va rahmat ayting (mijozlar bonusi)",
+                "balance_diff": 0,
+                "clients_diff": 20,
+                "xp_diff": 15
             },
-            "options": {
-                "ru": {
-                    "A": "Снизить цены ниже себестоимости, чтобы вытеснить конкурентов.",
-                    "B": "Запустить рекламу в Instagram/TikTok и предложить уникальный дизайн.",
-                    "C": "Закрыть точку на Чорсу и переехать на Сергели."
-                },
-                "tg": {
-                    "A": "Нархҳоро аз арзиши аслӣ паст кунед, то рақобатчиёнро берун кунед.",
-                    "B": "Рекламаро дар Instagram/TikTok фаъол кунед ва тарҳи беназир пешниҳод намоед.",
-                    "C": "Нуқтаро дар Чорсу баста, ба Сергели кӯчед."
-                },
-                "uz": {
-                    "A": "Raqobatchilarni siqib chiqarish uchun narxlarni tannarxidan ham pastga tushirish.",
-                    "B": "Instagram/TikTok-da reklama yo'lga qo'yib, o'zgacha dizayndagi mahsulotlar taklif qilish.",
-                    "C": "Chorsudagi do'konni yopib, Sergeliga ko'chib o'tish."
-                }
+            "B": {
+                "text_ru": "Предложить ему скидку на следующий заказ (небольшой расход, много клиентов)",
+                "text_tg": "Ба ӯ барои фармоиши навбатӣ тахфиф пешниҳод кунед (хароҷоти кам, мизоҷони зиёд)",
+                "text_uz": "Keyingi buyurtma uchun chegirma taklif qiling (kichik xarajat, ko'p mijozlar)",
+                "balance_diff": -50,
+                "clients_diff": 45,
+                "xp_diff": 20
             },
-            "correct": "B",
-            "explanation": {
-                "ru": "Правильно! Продвижение через соцсети и уникальный дизайн помогут выделиться среди однотипных конкурентов.",
-                "tg": "Дуруст! Танзими реклама дар шабакаҳои иҷтимоӣ ва тарҳи беназир ба шумо кӯмак мекунанд, ки фарқ кунед.",
-                "uz": "To'g'ri! Ijtimoiy tarmoqlar va noyob dizayn sizga raqobatchilardan ajralib turishga yordam beradi."
-            }
-        },
-        {
-            "scenario": {
-                "ru": "Вы хотите открыть точку продажи плова в Ташкенте, но сомневаетесь в локации. Какое место выберете?",
-                "tg": "Шумо мехоҳед дар Тошканд нуқтаи фурӯши палов кушоед, аммо дар интихоби макон дудила ҳастед. Кадом ҷойро интихоб мекунед?",
-                "uz": "Toshkentda palov markazi ochmoqchisiz, ammo joy tanlashda ikkilanmoqdasiz. Qaysi joyni tanlaysiz?"
-            },
-            "options": {
-                "ru": {
-                    "A": "Возле авторынка Сергели, где всегда много голодных автолюбителей.",
-                    "B": "В глухом спальном районе без вывески.",
-                    "C": "В арендованном гараже на окраине города."
-                },
-                "tg": {
-                    "A": "Назди бозори мошини Сергели, ки ҳамеша дӯстдорони мошини гурусна зиёданд.",
-                    "B": "Дар маҳаллаи дурдасти истиқоматӣ бе ягон лавҳа.",
-                    "C": "Дар гаражи иҷорагирифташуда дар канори шаҳр."
-                },
-                "uz": {
-                    "A": "Sergeli avtobozori yaqinida, u yerda doim och qolgan haydovchilar ko'p.",
-                    "B": "Sokin turar-joy dahasida, peshtaxtasiz.",
-                    "C": "Shahar chetidagi ijaraga olingan garajda."
-                }
-            },
-            "correct": "A",
-            "explanation": {
-                "ru": "Правильно! Высокий трафик целевой аудитории (водители, покупатели авто) обеспечит быстрый старт.",
-                "tg": "Дуруст! Трафики баланди аудиторияи мақсаднок (ронандагон, харидорон) оғози тезро таъмин мекунад.",
-                "uz": "To'g'ri! Maqsadli auditoriyaning (haydovchilar, xaridorlar) yuqori trafigi tezda savdoni yo'lga qo'yishga yordam beradi."
-            }
-        },
-        {
-            "scenario": {
-                "ru": "Какая платежная система наиболее популярна для онлайн-оплаты в розничной торговле в Узбекистане?",
-                "tg": "Кадом системаи пардохт барои пардохти онлайн дар тиҷорати чакана дар Ӯзбекистон маъмултар аст?",
-                "uz": "O'zbekistonda chakana savdoda onlayn to'lovlar uchun qaysi to'lov tizimlari eng mashhur?"
-            },
-            "options": {
-                "ru": {
-                    "A": "Alif и Душанбе Сити.",
-                    "B": "Click и Payme.",
-                    "C": "Только наличные рубли."
-                },
-                "tg": {
-                    "A": "Alif ва Душанбе Сити.",
-                    "B": "Click ва Payme.",
-                    "C": "Танҳо рубли нақд."
-                },
-                "uz": {
-                    "A": "Alif va Dushanbe City.",
-                    "B": "Click va Payme.",
-                    "C": "Faqat naqd rubl."
-                }
-            },
-            "correct": "B",
-            "explanation": {
-                "ru": "Правильно! Click и Payme — лидеры финтех-рынка Узбекистана.",
-                "tg": "Дуруст! Click ва Payme пешвоёни бозори финтехи Ӯзбекистон мебошанд.",
-                "uz": "To'g'ri! Click va Payme — O'zbekiston fintech bozorining yetakchilaridir."
+            "C": {
+                "text_ru": "Проигнорировать отзыв (нейтрально)",
+                "text_tg": "Фикрро нодида гиред (нейтралӣ)",
+                "text_uz": "Fikrga e'tibor bermaslik (neytral)",
+                "balance_diff": 0,
+                "clients_diff": 0,
+                "xp_diff": 0
             }
         }
-    ],
-    "tj": [
-        {
-            "scenario": {
-                "ru": "Ваш карго-груз из Китая застрял на границе по пути в Душанбе. Клиенты требуют товары. Ваши действия?",
-                "tg": "Боргоҳи каргои шумо аз Чин дар роҳ ба Душанбе дар сарҳад банд монд. Мизоҷон мол талаб доранд. Чӣ кор мекунед?",
-                "uz": "Xitoydan kelayotgan kargo yukingiz Dushanbega yo'lda chegarada tiqilib qoldi. Mijozlar tovarlarni talab qilmoqda. Nima qilasiz?"
+    },
+    {
+        "text_ru": "К вам пришёл крупный корпоративный заказ! Но требуется расширить штат.",
+        "text_tg": "Ба назди шумо фармоиши калони корпоративӣ омад! Аммо васеъ кардани ҳайати коргарон лозим аст.",
+        "text_uz": "Sizga katta korporativ buyurtma keldi! Ammo xodimlar sonini oshirish talab etiladi.",
+        "options": {
+            "A": {
+                "text_ru": "Нанять дополнительных сотрудников (расход, прибыль, новые клиенты)",
+                "text_tg": "Кормандони иловагӣ киро кунед (хароҷот, фоида, мизоҷони нав)",
+                "text_uz": "Qo'shimcha xodimlarni ishga oling (xarajat, daromad, yangi mijozlar)",
+                "balance_diff": -200,
+                "clients_diff": 80,
+                "xp_diff": 40,
+                "employees_diff": 2
             },
-            "options": {
-                "ru": {
-                    "A": "Игнорировать звонки клиентов и отключить телефон.",
-                    "B": "Честно объяснить ситуацию, предложить скидку на следующий заказ или бесплатную доставку.",
-                    "C": "Обвинить клиентов в нетерпеливости и аннулировать их заказы без возврата денег."
-                },
-                "tg": {
-                    "A": "Зангҳои мизоҷонро нодида гиред ва телефонро хомӯш кунед.",
-                    "B": "Вазъиятро ростқавлона фаҳмонед, барои фармоиши навбатӣ тахфиф ё интиқоли ройгон пешниҳод кунед.",
-                    "C": "Мизоҷонро ба бесабрӣ айбдор кунед ва фармоишҳоро бе бозгашти пул бекор кунед."
-                },
-                "uz": {
-                    "A": "Mijozlar qo'ng'iroqlariga javob bermaslik va telefonni o'chirib qo'yish.",
-                    "B": "Vaziyatni ochiq-oydin tushuntirish, keyingi buyurtma uchun chegirma yoki bepul yetkazib berish taklif qilish.",
-                    "C": "Mijozlarni sabrsizlikda ayblash va pullarini qaytarmasdan buyurtmalarni bekor qilish."
-                }
+            "B": {
+                "text_ru": "Отказаться от заказа (нейтрально)",
+                "text_tg": "Аз фармоиш даст кашед (нейтралӣ)",
+                "text_uz": "Buyurtmani rad etish (neytral)",
+                "balance_diff": 0,
+                "clients_diff": -5,
+                "xp_diff": 5
             },
-            "correct": "B",
-            "explanation": {
-                "ru": "Правильно! Честность и лояльность удерживают клиентов при форс-мажорах.",
-                "tg": "Дуруст! Ростқавлӣ ва вафодорӣ мизоҷонро дар ҳолатҳои форс-мажор нигоҳ медоранд.",
-                "uz": "To'g'ri! Samimiylik va sodiqlik kutilmagan vaziyatlarda mijozlarni ushlab qolishga yordam beradi."
-            }
-        },
-        {
-            "scenario": {
-                "ru": "Вы хотите запустить продажи национальной одежды чакан на рынке Корвон в Душанбе. Как привлечь первых покупателей?",
-                "tg": "Шумо мехоҳед фурӯши либоси миллии чаканро дар бозори Корвони Душанбе оғоз кунед. Чӣ тавр харидорони аввалинро ҷалб мекунед?",
-                "uz": "Dushanbedagi Korvon bozorida milliy chakan kiyimlari savdosini yo'lga qo'ymoqchisiz. Birinchi xaridorlarni qanday jalb qilasiz?"
-            },
-            "options": {
-                "ru": {
-                    "A": "Организовать красивую витрину, делать фотосессии в чакане для Instagram и продвигаться среди невест.",
-                    "B": "Продавать только ночью без освещения.",
-                    "C": "Ждать, пока покупатели сами случайно найдут вашу палатку без вывески."
-                },
-                "tg": {
-                    "A": "Витринаи зебо ташкил кунед, дар Instagram аксҳои либоси чаканро ҷойгир кунед ва байни арӯсон таблиғ намоед.",
-                    "B": "Танҳо шабона бе рӯшноӣ фурӯшед.",
-                    "C": "Мунтазир бошед, то харидорон худашон хаймаи бе лавҳаи шуморо пайдо кунанд."
-                },
-                "uz": {
-                    "A": "Chiroyli vitrina tashkil qilish, Instagram uchun chakan libosida fotosessiyalar qilish va kelinlar orasida reklama qilish.",
-                    "B": "Faqat tunda, chiroqsiz sotish.",
-                    "C": "Xaridorlar o'zlari tasodifan peshtaxtasiz do'koningizni topishini kutish."
-                }
-            },
-            "correct": "A",
-            "explanation": {
-                "ru": "Правильно! Визуальный контент и ориентация на целевую аудиторию (свадьбы, невесты) — ключ к успеху в продажах чакана.",
-                "tg": "Дуруст! Контенти визуалӣ ва нигаронида ба аудиторияи мақсаднок (тӯйҳо, арӯсон) калиди муваффақият аст.",
-                "uz": "To'g'ri! Vizual kontent va maqsadli auditoriyaga (to'ylar, kelinlar) yo'naltirilganlik — chakan sotishning muvaffaqiyat kalitidir."
-            }
-        },
-        {
-            "scenario": {
-                "ru": "Вы планируете построить зону отдыха в Варзобе. Какая услуга привлечет больше всего местных туристов летом?",
-                "tg": "Шумо нақша доред, ки дар Варзоб минтақаи истироҳатӣ созед. Кадом хидмат сайёҳони маҳаллиро дар тобистон бештар ҷалб мекунад?",
-                "uz": "Varzobda dam olish maskani qurishni rejalashtiryapsiz. Yozda mahalliy sayyohlarni eng ko'p qaysi xizmat jalb qiladi?"
-            },
-            "options": {
-                "ru": {
-                    "A": "Прокат зимних лыж.",
-                    "B": "Топчаны у прохладной горной реки, чистый бассейн и вкусный шашлык.",
-                    "C": "Лекции по квантовой физике на открытом воздухе."
-                },
-                "tg": {
-                    "A": "Иҷораи лижаҳои зимистона.",
-                    "B": "Катҳо (тапчан) дар назди дарёи салқини кӯҳӣ, ҳавзи тоза ва кабоби болаззат.",
-                    "C": "Маърузаҳо оид ба физикаи квантӣ дар ҳавои кушод."
-                },
-                "uz": {
-                    "A": "Qishki chang'ilar ijarasi.",
-                    "B": "Salqin tog' daryosi bo'yidagi so'rilar (topchan), toza basseyndar va mazali kabob.",
-                    "C": "Ochiq osmon ostida kvant fizikasi bo'yicha ma'ruzalar."
-                }
-            },
-            "correct": "B",
-            "explanation": {
-                "ru": "Правильно! Топчаны у воды и бассейн — идеальное спасение от летней жары для жителей Душанбе.",
-                "tg": "Дуруст! Катҳо дар назди об ва ҳавз — наҷоти беҳтарин аз гармии тобистон барои сокинони Душанбе мебошад.",
-                "uz": "To'g'ri! Suv bo'yidagi so'rilar va basseyn — yozgi issiqdan qochgan Dushanbe aholisi uchun eng yaxshi dam olish variantidir."
+            "C": {
+                "text_ru": "Заставить текущих сотрудников работать сверхурочно (прибыль без затрат, но риск ухода сотрудников)",
+                "text_tg": "Кормандони ҳозираро маҷбур кунед, ки изофакорӣ кунанд (фоида бе хароҷот, хавфи рафтани коргарон)",
+                "text_uz": "Hozirgi xodimlarni vaqtinchalik ko'proq ishlashga majburlash (foyda, xodim ketish xavfi)",
+                "balance_diff": 300,
+                "clients_diff": 30,
+                "xp_diff": 15,
+                "employees_diff": -1
             }
         }
-    ]
+    },
+    {
+        "text_ru": "Появился инвестор, готовый вложить деньги в ваш бизнес за долю в прибыли в будущем.",
+        "text_tg": "Сармоягузоре пайдо шуд, ки омода аст ба тиҷорати шумо маблағ гузорад.",
+        "text_uz": "Sizning biznesingizga sarmoya kiritishga tayyor investor paydo bo'ldi.",
+        "options": {
+            "A": {
+                "text_ru": "Принять инвестиции (большой бонус к балансу, новые клиенты)",
+                "text_tg": "Сармояро қабул кунед (бонуси калон ба баланс, мизоҷони нав)",
+                "text_uz": "Investitsiyalarni qabul qilish (balansga katta bonus, yangi mijozlar)",
+                "balance_diff": 500,
+                "clients_diff": 30,
+                "xp_diff": 25
+            },
+            "B": {
+                "text_ru": "Отказаться ради сохранения полной независимости (бонус к опыту)",
+                "text_tg": "Барои нигоҳ доштани истиқлолияти комил рад кунед (бонуси таҷриба)",
+                "text_uz": "Mustaqillikni saqlab qolish uchun rad etish (tajriba bonusi)",
+                "balance_diff": 0,
+                "clients_diff": 0,
+                "xp_diff": 50
+            },
+            "C": {
+                "text_ru": "Попросить больше денег (риск отказа инвестора 50/50)",
+                "text_tg": "Маблағи бештар талаб кунед (хавфи рад шудани сармоягузор)",
+                "text_uz": "Ko'proq pul so'rash (rad etilish xavfi)",
+                "balance_diff": 250,
+                "clients_diff": 15,
+                "xp_diff": 15
+            }
+        }
+    },
+    {
+        "text_ru": "Ваш ключевой сотрудник неожиданно решил уволиться из-за высокой нагрузки.",
+        "text_tg": "Корманди калидии шумо ногаҳон қарор дод, ки аз сабаби сарбории зиёд аз кор равад.",
+        "text_uz": "Sizning asosiy xodimingiz kutilmaganda og'ir ish sababli ketishga qaror qildi.",
+        "options": {
+            "A": {
+                "text_ru": "Повысить ему зарплату и улучшить условия (расход бюджета)",
+                "text_tg": "Маоши ӯро зиёд кунед ва шароитро беҳтар созед (хароҷоти буҷет)",
+                "text_uz": "Uning maoshini oshirish va sharoitlarni yaxshilash (byudjet xarajati)",
+                "balance_diff": -150,
+                "clients_diff": 10,
+                "xp_diff": 30
+            },
+            "B": {
+                "text_ru": "Отпустить сотрудника (потеря сотрудника, снижение продуктивности)",
+                "text_tg": "Ба ӯ иҷозати рафтан диҳед (талафи коргар, паст шудани маҳсулнокӣ)",
+                "text_uz": "Javob berish (xodimni yo'qotish, samaradorlik pasayishi)",
+                "balance_diff": 0,
+                "clients_diff": -25,
+                "xp_diff": 10,
+                "employees_diff": -1
+            },
+            "C": {
+                "text_ru": "Найти нового сотрудника на бирже труда (небольшой расход, обучение)",
+                "text_tg": "Дар биржаи меҳнат корманди нав ёбед (хароҷоти кам, омӯзиш)",
+                "text_uz": "Mehnat birjasidan yangi xodim topish (kichik xarajat, o'qitish)",
+                "balance_diff": -50,
+                "clients_diff": -5,
+                "xp_diff": 20
+            }
+        }
+    }
+]
+
+BUSINESS_TYPES = {
+    "cargo": {
+        "name_ru": "📦 Карго компания",
+        "name_tg": "📦 Ширкати Карго",
+        "name_uz": "📦 Kargo kompaniyasi",
+        "cost": 500,
+        "income_per_client": 15,
+        "required_level": 1,
+        "desc_ru": "Доставка товаров из Китая и Турции.",
+        "desc_tg": "Интиқоли молҳо аз Чин ва Туркия.",
+        "desc_uz": "Xitoy va Turkiyadan tovarlarni yetkazish."
+    },
+    "logistics": {
+        "name_ru": "🚛 Логистическая компания",
+        "name_tg": "🚛 Ширкати Логистикӣ",
+        "name_uz": "🚛 Logistika kompaniyasi",
+        "cost": 1200,
+        "income_per_client": 30,
+        "required_level": 2,
+        "desc_ru": "Внутренние и международные перевозки грузов.",
+        "desc_tg": "Интиқоли дохилӣ ва байналмилалии борҳо.",
+        "desc_uz": "Ichki va xalqaro yuk tashish xizmatlari."
+    },
+    "store": {
+        "name_ru": "🌐 Интернет-магазин",
+        "name_tg": "🌐 Дӯкони интернетӣ",
+        "name_uz": "🌐 Internet-do'kon",
+        "cost": 800,
+        "income_per_client": 20,
+        "required_level": 1,
+        "desc_ru": "Продажа трендовых товаров через соцсети.",
+        "desc_tg": "Фурӯши молҳои трендӣ тавассути шабакаҳои иҷтимоӣ.",
+        "desc_uz": "Ijtimoiy tarmoqlar orqali tovarlar savdosi."
+    },
+    "cafe": {
+        "name_ru": "🍔 Кафе / Чайхана",
+        "name_tg": "🍔 Кафе / Чойхона",
+        "name_uz": "🍔 Kafe / Choyxona",
+        "cost": 1500,
+        "income_per_client": 35,
+        "required_level": 2,
+        "desc_ru": "Вкусная национальная кухня и высокий сервис.",
+        "desc_tg": "Таомҳои миллии болаззат ва хизматрасонии олӣ.",
+        "desc_uz": "Mazali milliy taomlar va yuqori xizmat ko'rsatish."
+    },
+    "clothes": {
+        "name_ru": "👗 Магазин одежды",
+        "name_tg": "👗 Дӯкони либосворӣ",
+        "name_uz": "👗 Kiyim-kechak do'koni",
+        "cost": 2000,
+        "income_per_client": 45,
+        "required_level": 3,
+        "desc_ru": "Бутик модной одежды и национальных нарядов.",
+        "desc_tg": "Бутики либосҳои замонавӣ ва либосҳои миллӣ.",
+        "desc_uz": "Zamonaviy va milliy liboslar do'koni."
+    },
+    "education": {
+        "name_ru": "🎓 Учебный центр",
+        "name_tg": "🎓 Маркази таълимӣ",
+        "name_uz": "🎓 O'quv markazi",
+        "cost": 3000,
+        "income_per_client": 60,
+        "required_level": 4,
+        "desc_ru": "Обучение IT, языкам и маркетингу.",
+        "desc_tg": "Омӯзиши IT, забонҳо ва маркетинг.",
+        "desc_uz": "IT, tillar va marketing bo'yicha ta'lim berish."
+    },
+    "marketing": {
+        "name_ru": "🚀 Маркетинговое агентство",
+        "name_tg": "🚀 Агентии маркетингӣ",
+        "name_uz": "🚀 Marketing agentligi",
+        "cost": 5000,
+        "income_per_client": 100,
+        "required_level": 5,
+        "desc_ru": "SMM, продвижение и создание вирусного контента.",
+        "desc_tg": "SMM, таблиғ ва сохтани контенти вирусӣ.",
+        "desc_uz": "SMM, reklamalar va virusli kontent yaratish xizmati."
+    }
 }

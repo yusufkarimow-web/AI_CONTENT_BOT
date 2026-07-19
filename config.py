@@ -1,6 +1,6 @@
-# config.py — Конфигурация бота Sozanda v2.0
+# config.py — Конфигурация бота TojikAI v2.0
 # Enterprise-ready: Pydantic validation, circuit breaker config, structured logging
-# Автор: Sozanda Team
+# Автор: TojikAI Team
 # Цель: Масштабирование до 1M+ пользователей
 
 import os
@@ -130,7 +130,7 @@ class Settings(BaseSettings):
 
     # === CORE ===
     bot_token: str = Field(..., description="Telegram Bot Token от @BotFather")
-    bot_username: str = Field(default="sozanda_bot")
+    bot_username: str = Field(default="tojikai_bot")
     env: str = Field(default="development", pattern=r"^(development|staging|production)$")
 
     # === ADMIN ===
@@ -274,7 +274,7 @@ class Settings(BaseSettings):
                 features=["Базовые ниши", "Водяной знак"],
             ),
             "oson": Tariff(
-                name="⚡ Oson",
+                name="⚡ Premium",
                 daily_limit=self.oson_daily_limit,
                 monthly_limit=200,
                 price_monthly=50000,
@@ -442,7 +442,7 @@ DEFAULT_LANGUAGE = settings.default_language
 LOG_LEVEL = settings.log_level
 AI_TIMEOUT = settings.ai_timeout
 AI_MAX_RETRIES = settings.ai_max_retries
-BOT_NAME = "Sozanda"
+BOT_NAME = "TojikAI"
 BOT_USERNAME = settings.bot_username
 BOT_LINK = settings.bot_link
 TARIFFS = settings.tariffs
@@ -479,8 +479,8 @@ CONTENT_TYPES = {
 # Но мы используем ступенчатую систему для ясности
 REFERRAL_LEVELS = {
     1: {"bonus": 5, "type": "generations", "description": "1 друг = 5 бонусных генераций"},
-    3: {"bonus": 3, "type": "days_oson", "description": "3 друга = 3 дня Oson"},
-    5: {"bonus": 7, "type": "days_oson", "description": "5 друзей = 7 дней Oson"},
+    3: {"bonus": 3, "type": "days_oson", "description": "3 друга = 3 дня Premium"},
+    5: {"bonus": 7, "type": "days_oson", "description": "5 друзей = 7 дней Premium"},
     10: {"bonus": 30, "type": "days_pro", "description": "10 друзей = 30 дней Pro"},
     25: {"bonus": 90, "type": "days_pro", "description": "25 друзей = 90 дней Pro"},
     50: {"bonus": 365, "type": "days_pro", "description": "50 друзей = 1 год Pro"},

@@ -16,16 +16,18 @@ router = Router()
 # ТЕКСТЫ
 # ============================================
 
-WELCOME_TEXT_RU = """👋 Добро пожаловать в <b>Sozanda</b>!
+WELCOME_TEXT_RU = """🇹🇯 Хуш омадед ба <b>TojikAI</b>!
 
-🤖 Я — AI-бот, который создаёт вирусный контент для бизнеса.
+Аввалин платформаи AI барои контент, маркетинг ва рушди бизнес дар Тоҷикистон ва Осиёи Марказӣ.
 
-✨ Что я умею:
-• 🎬 Reels / Видео с вирусными хуками
-• 📝 Посты для Instagram
-• 📸 Stories
-• 💡 Идеи для контента
-• ⚡ Цепляющие подписи
+🤖 AI Контент
+📈 Постҳо
+🎬 Сторисҳо
+💡 Идеяҳо
+🎮 Бизнес Империя
+👥 Даъват
+📊 Омор
+⭐ Premium
 
 <b>Выберите язык / Забонро интихоб кунед / Tilni tanlang:</b>"""
 
@@ -153,15 +155,15 @@ async def cmd_help(message: Message):
     lang = user.get("language", "ru") if user else "ru"
 
     if lang == "uz":
-        help_text = """📖 <b>Sozanda boti bo'yicha qo'llanma</b>
+        help_text = """📖 <b>TojikAI boti bo'yicha qo'llanma</b>
 
-🎬 <b>AI Reels/Kreativ</b> — Reels ssenariylari yaratish
-📝 <b>Postlar</b> — Instagram uchun tayyor post matnlari
-📸 <b>Stories</b> — stories g'oyalar ketma-ketligi
-💡 <b>G'oyalar</b> — kreativ kontent-reja g'oyalari
+🎬 <b>AI Kontent</b> — Reels va mukammal kontent-rejalar yaratish
+📈 <b>Postlar</b> — sotuvchi va ta'limiy postlar matnlari
+🎬 <b>Stories</b> — stories g'oyalar va o'yinlar ketma-ketligi
+💡 <b>G'oyalar</b> — TikTok, Instagram va Telegram uchun g'oyalar
 
-⭐ <b>Premium obuna</b> — tariflar va unga ulanish
-👥 <b>Hamkorlik (Do'stlar)</b> — do'stlarni taklif qilib, bonuslar oling
+⭐ <b>Premium</b> — tariflar va unga ulanish
+👥 <b>Hamkorlik</b> — do'stlarni taklif qilib, bonuslar oling
 📊 <b>Statistika</b> — hisobingiz holati va generatsiyalar soni
 📋 <b>Tarix</b> — saqlab qolingan barcha AI matnlaringiz
 
@@ -169,16 +171,16 @@ Buyruqlar:
 /start — botni ishga tushirish
 /help — qo'llanma
 
-Savollar bo'yicha: @sozanda_support"""
+Savollar bo'yicha: @tojikai_support"""
     elif lang == "tg":
-        help_text = """📖 <b>Помощь по боту Sozanda</b>
+        help_text = """📖 <b>Дастури TojikAI</b>
 
-🎬 <b>AI мундод</b> — сохтани Reels, постҳо ва Stories
-📝 <b>Постҳо</b> — матнҳои тайёр барои Instagram
-📸 <b>Сториз</b> — идеяҳо барои сторис
-💡 <b>Идеяҳо</b> — идеяҳои креативӣ барои контент
+🎬 <b>AI Контент</b> — сохтани Reels, нақшаҳои контент
+📈 <b>Постҳо</b> — матнҳои тайёр ва фурӯшанда барои Instagram
+🎬 <b>Сторисҳо</b> — идеяҳо ва прогрев барои сторис
+💡 <b>Идеяҳо</b> — идеяҳои креативӣ барои TikTok ва Telegram
 
-⭐ <b>Премиум</b> — обунаҳо ва тарифҳо
+⭐ <b>Premium</b> — обунаҳо ва тарифҳо
 👥 <b>Даъват</b> — даъвати дӯстон, гирифтани бонусҳо
 📊 <b>Омор</b> — омори истифодаи шумо
 📋 <b>Таърих</b> — матнҳои ҳифзшудаи шумо
@@ -187,14 +189,14 @@ Savollar bo'yicha: @sozanda_support"""
 /start — оғоз
 /help — кӯмак
 
-Барои саволҳо: @sozanda_support"""
+Барои саволҳо: @tojikai_support"""
     else:
-        help_text = """📖 <b>Помощь по боту Sozanda</b>
+        help_text = """📖 <b>Помощь по боту TojikAI</b>
 
-🎬 <b>Контент AI</b> — создайте Reels, посты, Stories
-📝 <b>Посты</b> — готовые тексты для Instagram
-📸 <b>Stories</b> — идеи для сторис
-💡 <b>Идеи</b> — креативные концепции
+🎬 <b>AI Контент</b> — создайте Reels, контент-планы
+📈 <b>Посты</b> — продающие и экспертные тексты
+🎬 <b>Сторис</b> — идеи и сценарии прогревов
+💡 <b>Идеи</b> — креативные концепции для TikTok/Telegram
 
 ⭐ <b>Premium</b> — подписки и тарифы
 👥 <b>Рефералка</b> — приглашайте друзей, получайте бонусы
@@ -205,6 +207,6 @@ Savollar bo'yicha: @sozanda_support"""
 /start — начать
 /help — помощь
 
-По вопросам: @sozanda_support"""
+По вопросам: @tojikai_support"""
 
     await message.answer(help_text, parse_mode="HTML")

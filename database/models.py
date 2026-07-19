@@ -203,6 +203,59 @@ async def increment_generation(user_id: int):
     """, (user_id, today))
 
 
+# ============================================
+# БИЗНЕС ИМПЕРИЯ (БИЗНЕС-КВИЗ И СИМУЛЯТОР)
+# ============================================
+
+async def get_or_create_business_empire(user_id: int, username: Optional[str] = None) -> Dict[str, Any]:
+    """Получить или создать профиль в Бизнес Империи"""
+    row = await fetch_one("SELECT * FROM user_business_empire WHERE user_id = ?", (user_id,))
+    if row:
+        return row
+
+    await execute_query("""
+        INSERT INTO user_business_empire (user_id, username, balance, clients, employees, level, xp, businesses)
+        VALUES (?, ?, 1000, 0, 0, 1, 0, '[]')
+    """, (user_id, username))
+
+    return {
+        "user_id": user_id,
+        "username": username,
+        "balance": 1000,
+        "clients": 0,
+        "employees": 0,
+        "level": 1,
+        "xp": 0,
+        "businesses": "[]"
+    }
+
+
+async def update_business_empire(
+    user_id: int,
+    balance: int,
+    clients: int,
+    employees: int,
+    level: int,
+    xp: int,
+    businesses: str
+):
+    """Обновить состояние империи пользователя"""
+    await execute_query("""
+        UPDATE user_business_empire
+        SET balance = ?, clients = ?, employees = ?, level = ?, xp = ?, businesses = ?
+        WHERE user_id = ?
+    """, (balance, clients, employees, level, xp, businesses, user_id))
+
+
+async def get_business_empire_leaderboard(limit: int = 10) -> List[Dict[str, Any]]:
+    """Получить топ игроков Бизнес Империи"""
+    return await fetch_all("""
+        SELECT * FROM user_business_empire
+        ORDER BY level DESC, xp DESC, balance DESC
+        LIMIT ?
+    """, (limit,))
+
+
 async def add_bonus_generation(user_id: int, bonus: int):
     """Добавить бонусные генерации"""
     today = date.today().isoformat()
