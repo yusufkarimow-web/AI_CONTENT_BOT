@@ -1,23 +1,17 @@
 {
   "key": "marketplace",
   "country": "uz",
-  "name_ru": "🛒 Торговля на Uzum Market",
-  "name_uz": "🛒 Uzum Marketda savdo qilish",
   "icon": "🛒",
+  "name_ru": "Торговля на Uzum Market",
+  "name_uz": "Uzum Marketda Savdo",
   "topics_ru": [
-    "Как начать продавать на Uzum Market с нуля в 2026 году",
-    "5 ходовых товаров для маркетплейсов в Узбекистане",
-    "Секреты вывода карточки товара в топ на Uzum",
-    "Как правильно настроить рекламу своего магазина на Uzum",
-    "Ошибки начинающих продавцов, которые ведут к сливу бюджета"
+    "Как выйти на Uzum Market",
+    "Топ товаров для продаж в Узбекистане"
   ],
   "topics_uz": [
-    "2026-yilda Uzum Marketda savdoni mutlaqo noldan boshlash",
-    "O'zbekiston marketpleyslarida eng ko'p sotiladigan 5 ta xaridorgir tovar",
-    "Uzumda mahsulot kartochkasini TOPga olib chiqish sirlari",
-    "Uzum marketpleysida do'koningiz reklamalarini to'g'ri sozlash",
-    "Yangi boshlovchi sotuvchilar yo'l qo'yadigan va zarar keltiradigan xatolar"
+    "Uzum Marketda savdo boshlash",
+    "O'zbekistonda eng o'timli tovarlar"
   ],
-  "hashtags_ru": "#uzum #маркетплейс #бизнес #торговля #ташкент #узбекистан",
-  "hashtags_uz": "#uzummarket #marketpleys #tadbirkor #savdo #toshkent #uzbekistan"
+  "hashtags_ru": "#uzum #маркетплейс #ташкент",
+  "hashtags_uz": "#uzummarket #toshkent"
 }

@@ -1,23 +1,17 @@
 {
   "key": "realestate",
   "country": "uz",
-  "name_ru": "🏢 Недвижимость и Аренда в Ташкенте",
-  "name_uz": "🏢 Toshkentda Ko'chmas mulk va Ijara",
   "icon": "🏢",
+  "name_ru": "Недвижимость и Аренда",
+  "name_uz": "Ko'chmas mulk va Ijara",
   "topics_ru": [
-    "Обзор новостроек Ташкента: где выгоднее купить квартиру",
-    "Как правильно арендовать жилье в Ташкенте и не переплатить",
-    "5 ошибок при покупке недвижимости в Узбекистане",
-    "Почему цены на недвижимость в Ташкенте продолжают расти",
-    "Советы риелтора: как подготовить квартиру к быстрой продаже"
+    "Обзор новостроек Ташкента",
+    "Где арендовать квартиру выгодно"
   ],
   "topics_uz": [
-    "Toshkent yangi uylari (novostroyka) sharhi: qayerdan uy olgan afzal",
-    "Toshkentda ijaraga uy olishda aldanib qolmaslik yo'llari",
-    "O'zbekistonda ko'chmas mulk sotib olishda yo'l qo'yiladigan 5 ta xato",
-    "Nega Toshkentda ko'chmas mulk narxlari tinimsiz oshib bormoqda",
-    "Rieltor maslahati: uyni tez va qimmat sotish sirlari"
+    "Toshkent yangi uylari sharhi",
+    "Ijaraga arzon uy topish"
   ],
-  "hashtags_ru": "#недвижимость #арендаташкент #новостройки #риелтор #квартираташкент #узбекистан",
-  "hashtags_uz": "#uyjoy #ijara #toshkent #novostroyka #rieltor #kochmasmulk #uzbekistan"
+  "hashtags_ru": "#недвижимость #ташкент #аренда",
+  "hashtags_uz": "#uyjoy #toshkent #ijara"
 }

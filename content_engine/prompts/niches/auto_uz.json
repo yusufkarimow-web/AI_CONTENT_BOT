@@ -1,23 +1,17 @@
 {
   "key": "auto_uz",
   "country": "uz",
-  "name_ru": "🚗 Автосалоны и Автосервис",
-  "name_uz": "🚗 Avtosalon va Avtoservis",
   "icon": "🚗",
+  "name_ru": "Автосалоны и Автосервис",
+  "name_uz": "Avtosalon va Avtoservis",
   "topics_ru": [
-    "Специфика авторынка Узбекистана: цены на Chevrolet и электромобили",
-    "3 ошибки, которые совершают владельцы UzAuto при уходе за авто",
-    "Как выгодно купить б/у машину на авторынке Сергели",
-    "Почему качественное обслуживание в автосервисе экономит миллионы сумов",
-    "Как подготовить вашу машину к климату Узбекистана"
+    "Обзор цен на авторынке Сергели",
+    "Как ухаживать за Chevrolet"
   ],
   "topics_uz": [
-    "O'zbekiston avtobozori: Chevrolet va elektromobillar narxlari tahlili",
-    "UzAuto egalari mashina parvarishida yo'l qo'yadigan 3 ta xato",
-    "Sergeli avtobozoridan qanday qilib yaxshi va arzon mashina olish mumkin",
-    "Nega sifatli avtoservis xizmati millionlab so'm pulingizni tejaydi",
-    "O'zbekiston iqlimida mashinani qanday to'g'ri parvarishlash kerak"
+    "Sergeli avtobozori narxlari",
+    "Chevrolet mashina parvarishi"
   ],
-  "hashtags_ru": "#автосервис #авторынок #ташкент #сергели #chevrolet #uzauto #электромобили",
-  "hashtags_uz": "#avtoservis #avtobozor #sergeli #toshkent #mashina #chevrolet #elektromobil"
+  "hashtags_ru": "#автосервис #сергели #chevrolet",
+  "hashtags_uz": "#avtobozor #sergeli #chevrolet"
 }

@@ -1,4 +1,4 @@
-# database/models.py — Модели и функции для работы с БД Sozanda
+# database/models.py — Модели и функции для работы с БД TojikAI
 
 from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Any
@@ -82,9 +82,25 @@ async def get_or_create_user(
     if referrer_id:
         await execute_query("""
             UPDATE users
-            SET referral_count = referral_count + 1
+            SET referral_count = referral_count + 1,
+                referral_active_count = referral_active_count + 1,
+                referral_points = referral_points + 10
             WHERE user_id = ?
         """, (referrer_id,))
+        # Update tier
+        referrer = await fetch_one("SELECT * FROM users WHERE user_id = ?", (referrer_id,))
+        if referrer:
+            pts = referrer.get("referral_points", 0)
+            tier = "Bronze"
+            if pts >= 200:
+                tier = "Platinum"
+            elif pts >= 100:
+                tier = "Gold"
+            elif pts >= 50:
+                tier = "Silver"
+            await execute_query("""
+                UPDATE users SET referral_tier = ? WHERE user_id = ?
+            """, (tier, referrer_id))
 
     return await fetch_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
 
@@ -137,6 +153,9 @@ async def get_user_stats(user_id: int) -> Dict[str, Any]:
         "total_count": total_count["count"] if total_count else 0,
         "daily_limit": daily_limit,
         "plan": sub.get("plan", "free") if sub else "free",
+        "referral_tier": user.get("referral_tier", "Bronze"),
+        "referral_points": user.get("referral_points", 0),
+        "referral_active_count": user.get("referral_active_count", 0),
     }
 
 
@@ -214,8 +233,12 @@ async def get_or_create_business_empire(user_id: int, username: Optional[str] = 
         return row
 
     await execute_query("""
-        INSERT INTO user_business_empire (user_id, username, balance, clients, employees, level, xp, businesses)
-        VALUES (?, ?, 1000, 0, 0, 1, 0, '[]')
+        INSERT INTO user_business_empire (
+            user_id, username, balance, clients, employees, level, xp, businesses,
+            rank, city, unlocked_cities, employees_hired, achievements, daily_tasks
+        )
+        VALUES (?, ?, 1000, 0, 0, 1, 0, '[]', 'Новичок', 'Душанбе', '["Душанбе"]',
+        '{"managers": 0, "marketers": 0, "drivers": 0, "accountants": 0, "lawyers": 0}', '[]', '[]')
     """, (user_id, username))
 
     return {
@@ -226,7 +249,13 @@ async def get_or_create_business_empire(user_id: int, username: Optional[str] = 
         "employees": 0,
         "level": 1,
         "xp": 0,
-        "businesses": "[]"
+        "businesses": "[]",
+        "rank": "Новичок",
+        "city": "Душанбе",
+        "unlocked_cities": '["Душанбе"]',
+        "employees_hired": '{"managers": 0, "marketers": 0, "drivers": 0, "accountants": 0, "lawyers": 0}',
+        "achievements": "[]",
+        "daily_tasks": "[]"
     }
 
 
@@ -237,14 +266,21 @@ async def update_business_empire(
     employees: int,
     level: int,
     xp: int,
-    businesses: str
+    businesses: str,
+    rank: str = "Новичок",
+    city: str = "Душанбе",
+    unlocked_cities: str = '["Душанбе"]',
+    employees_hired: str = '{"managers": 0, "marketers": 0, "drivers": 0, "accountants": 0, "lawyers": 0}',
+    achievements: str = '[]',
+    daily_tasks: str = '[]'
 ):
     """Обновить состояние империи пользователя"""
     await execute_query("""
         UPDATE user_business_empire
-        SET balance = ?, clients = ?, employees = ?, level = ?, xp = ?, businesses = ?
+        SET balance = ?, clients = ?, employees = ?, level = ?, xp = ?, businesses = ?,
+            rank = ?, city = ?, unlocked_cities = ?, employees_hired = ?, achievements = ?, daily_tasks = ?
         WHERE user_id = ?
-    """, (balance, clients, employees, level, xp, businesses, user_id))
+    """, (balance, clients, employees, level, xp, businesses, rank, city, unlocked_cities, employees_hired, achievements, daily_tasks, user_id))
 
 
 async def get_business_empire_leaderboard(limit: int = 10) -> List[Dict[str, Any]]:

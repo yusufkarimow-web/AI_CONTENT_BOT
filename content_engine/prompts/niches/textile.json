@@ -1,23 +1,17 @@
 {
   "key": "textile",
   "country": "uz",
-  "name_ru": "👗 Текстиль и Производство одежды",
-  "name_uz": "👗 To'qimachilik va Kiyim ishlab chiqarish",
   "icon": "👗",
+  "name_ru": "Текстиль и Одежда",
+  "name_uz": "To'qimachilik va Kiyimlar",
   "topics_ru": [
-    "Почему узбекский хлопок ценится во всем мире",
-    "Как работает наша текстильная фабрика изнутри",
-    "5 причин покупать одежду оптом напрямую из Узбекистана",
-    "Как мы контролируем качество пошива на производстве",
-    "Тренды трикотажной одежды этого сезона"
+    "Почему узбекский хлопок лучший",
+    "Как заказать трикотаж оптом"
   ],
   "topics_uz": [
-    "Nega o'zbek paxtasi butun dunyoda mashhur va qadrli",
-    "To'qimachilik fabrikamizning ichki ish jarayoni",
-    "O'zbekistondan to'g'ridan-to'g'ri ulgurji kiyim sotib olishning 5 ta foydasi",
-    "Ishlab chiqarishda kiyim tikish sifatini qanday nazorat qilamiz",
-    "Ushbu mavsumning eng urfdagi trikotaj kiyimlari trendi"
+    "O'zbek paxtasi nega birinchi",
+    "Ulgurji kiyim buyurtma qilish"
   ],
-  "hashtags_ru": "#текстиль #производство #одеждаоптом #хлопок #фабрика #узбекистан",
-  "hashtags_uz": "#toqimachilik #ishlabchiqarish #kiyimlar #ulgurji #paxta #toshkent"
+  "hashtags_ru": "#текстиль #одежда #узбекистан",
+  "hashtags_uz": "#toqimachilik #kiyimlar"
 }

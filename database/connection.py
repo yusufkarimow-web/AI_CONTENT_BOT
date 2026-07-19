@@ -1,4 +1,4 @@
-# database/connection.py — Подключение к базе данных Sozanda
+# database/connection.py — Подключение к базе данных TojikAI
 # SQLite для старта, легко мигрировать на PostgreSQL потом
 
 import os
@@ -51,6 +51,9 @@ async def init_db():
                 is_active INTEGER DEFAULT 1,
                 is_admin INTEGER DEFAULT 0,
                 country TEXT DEFAULT 'uz',
+                referral_tier TEXT DEFAULT 'Bronze',
+                referral_points INTEGER DEFAULT 0,
+                referral_active_count INTEGER DEFAULT 0,
                 FOREIGN KEY (referrer_id) REFERENCES users(user_id)
             )
         """)
@@ -185,7 +188,13 @@ async def init_db():
                 employees INTEGER DEFAULT 0,
                 level INTEGER DEFAULT 1,
                 xp INTEGER DEFAULT 0,
-                businesses TEXT DEFAULT '[]'
+                businesses TEXT DEFAULT '[]',
+                rank TEXT DEFAULT 'Новичок',
+                city TEXT DEFAULT 'Душанбе',
+                unlocked_cities TEXT DEFAULT '["Душанбе"]',
+                employees_hired TEXT DEFAULT '{"managers": 0, "marketers": 0, "drivers": 0, "accountants": 0, "lawyers": 0}',
+                achievements TEXT DEFAULT '[]',
+                daily_tasks TEXT DEFAULT '[]'
             )
         """)
 

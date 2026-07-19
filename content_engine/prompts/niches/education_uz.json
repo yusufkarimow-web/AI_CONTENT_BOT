@@ -1,0 +1,17 @@
+{
+  "key": "education_uz",
+  "country": "uz",
+  "icon": "🎓",
+  "name_ru": "Учебные центры и IT школы",
+  "name_uz": "O'quv markazlari va IT maktablar",
+  "topics_ru": [
+    "Как подготовиться к IELTS за 3 месяца",
+    "Перспективные IT направления в Ташкенте"
+  ],
+  "topics_uz": [
+    "3 oyda IELTSga tayyorlanish",
+    "Toshkentda eng istiqbolli IT sohalar"
+  ],
+  "hashtags_ru": "#образование #itшкола #ташкент",
+  "hashtags_uz": "#talim #itmaktab #toshkent"
+}

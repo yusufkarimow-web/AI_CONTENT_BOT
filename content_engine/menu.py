@@ -1,6 +1,9 @@
-# content_engine/menu.py — Главный router бота Sozanda
+# content_engine/menu.py — Главный router бота TojikAI (v2.0)
+# Без глобальных словарей! Все состояния хранятся строго в FSMContext (state).
+# Полная интеграция всех коллбэков (topic_*, topic_all, referral_main, ref_stats, ref_top, back_to_main).
 
 import random
+import json
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
@@ -30,10 +33,10 @@ from database.models import (
     get_generation_history,
 )
 from services.ai_generator import generate_ai_content
-from content_engine.niche_manager import get_topic_ideas, get_niche_key_by_text, get_niche_name
+from content_engine.niche_manager import get_topic_ideas, get_niche_key_by_text, get_niche_name, get_all_niches
 
+# Проверка, является ли текст кнопкой ниши
 def is_niche_button(text: str) -> bool:
-    from content_engine.niche_manager import get_all_niches
     all_names = set()
     for country in ["uz", "tj"]:
         for lang in ["ru", "tg", "uz"]:
@@ -49,17 +52,17 @@ from keyboards.topics_keyboard import get_topics_keyboard
 from keyboards.language_menu import get_language_menu
 from keyboards.subscription_menu import get_subscription_menu, get_payment_menu
 from keyboards.share_keyboard import get_share_keyboard
+from keyboards.referral_keyboard import get_referral_keyboard
 
 router = Router()
 
-user_counts = {}
-user_niches = {}
-user_languages = {}
-user_topics = {}
+# ============================================
+# ЛОКАЛИЗАЦИОННЫЕ ТЕКСТЫ С БРЕНДОМ TojikAI
+# ============================================
 
 TEXTS = {
     "ru": {
-        "welcome": "👋 Добро пожаловать в <b>Sozanda</b>!\n\n🤖 Я — AI-бот, который создаёт вирусный контент для бизнеса.\n\n✨ Что я умею:\n• 🎬 Reels / Видео с вирусными хуками\n• 📝 Посты для Instagram\n• 📸 Stories\n• 💡 Идеи для контента\n• ⚡ Цепляющие подписи\n\n<b>Выберите язык / Забонро интихоб кунед / Tilni tanlang:</b>",
+        "welcome": "👋 Добро пожаловать в <b>TojikAI</b>!\n\n🤖 Я — AI-бот, который создаёт вирусный контент для бизнеса.\n\n✨ Что я умею:\n• 🎬 Reels / Видео с вирусными хуками\n• 📝 Посты для Instagram\n• 📸 Stories\n• 💡 Идеи для контента\n• ⚡ Цепляющие подписи\n\n<b>Выберите язык / Забонро интихоб кунед / Tilni tanlang:</b>",
         "main_menu": "👋 Главное меню\n\n✨ Выберите, что создать:",
         "choose_niche": "🏢 Для какого бизнеса нужен контент?",
         "choose_count": "🔢 Сколько идей подготовить?",
@@ -67,15 +70,15 @@ TEXTS = {
         "generating": "⏳ Генерирую контент через AI...\n\nЭто займёт несколько секунд...",
         "no_topic": "❌ Такой темы нет. Выберите из списка выше.",
         "limit_reached": "❌ Лимит исчерпан!\n\n💡 У вас закончились бесплатные генерации на сегодня.\n\n🚀 Получите больше:\n• Пригласите друга — +{ref_bonus} генераций\n• Оформите подписку Oson — {oson_limit} генераций/день\n• Или Professional — безлимит!",
-        "premium_info": "⭐ <b>Premium подписки</b>\n\n🆓 <b>Free</b> — {free_limit} генераций/день\n   Водяной знак на контенте\n\n💚 <b>Oson</b> — {oson_price} сомони/мес\n   • {oson_limit} генераций/день\n   • Без водяного знака\n   • Все ниши\n\n💎 <b>Professional</b> — {pro_price} сомони/мес\n   • Безлимит генераций\n   • Без водяного знака\n   • Все ниши + приоритетная генерация\n\n🏢 <b>Business</b> — {biz_price} сомони/мес\n   • Всё из Professional\n   • White-label + API доступ",
-        "support": "📞 <b>Поддержка</b>\n\nЕсть вопросы или предложения?\nПишите: @sozanda_support\n\n🤝 Для партнёрств и рекламы:\n@sozanda_admin",
+        "premium_info": "⭐ <b>Premium подписки TojikAI</b>\n\nAppropriate limits apply for normal users. Free is watermarked. Premium tiers bypass all locks.",
+        "support": "📞 <b>Поддержка TojikAI</b>\n\nЕсть вопросы или предложения?\nПишите: @tojikai_support\n\n🤝 Для партнёств и рекламы:\n@tojikai_support",
         "history_empty": "📭 История пуста. Создайте свой первый контент!",
         "history_title": "📋 <b>Ваша история генераций</b>\n\n",
         "language_set": "✅ Язык установлен: {lang}",
-        "stats": "📊 <b>Ваша статистика</b>\n\n🆔 ID: {user_id}\n🌍 Язык: {lang}\n📅 Регистрация: {reg_date}\n\n📈 Генераций сегодня: {today}/{limit}\n📈 Всего генераций: {total}\n👥 Приглашено друзей: {refs}\n\n💳 Тариф: {plan}",
+        "stats": "📊 <b>Ваша статистика TojikAI</b>\n\n🆔 ID: {user_id}\n🌍 Язык: {lang}\n📅 Регистрация: {reg_date}\n\n📈 Генераций сегодня: {today}/{limit}\n📈 Всего генераций: {total}\n👥 Приглашено друзей: {refs}\n\n💳 Тариф: {plan}",
     },
     "tg": {
-        "welcome": "👋 Хуш омадед ба <b>Sozanda</b>!\n\n🤖 Ман — боти AI ҳастам, ки мундод барои бизнес месозам.\n\n✨ Чи корҳо мекунам:\n• 🎬 Reels / Видео бо hook-ҳои вирусӣ\n• 📝 Постҳо барои Instagram\n• 📸 Stories\n• 💡 Идеяҳо барои контент\n• ⚡ Сарлавҳаҳои ҷолиб\n\n<b>Забонро интихоб кунед / Выберите язык:</b>",
+        "welcome": "👋 Хуш омадед ба <b>TojikAI</b>!\n\n🤖 Ман — боти AI ҳастам, ки мундод барои бизнес месозам.\n\n✨ Чи корҳо мекунам:\n• 🎬 Reels / Видео бо hook-ҳои вирусӣ\n• 📝 Постҳо барои Instagram\n• 📸 Stories\n• 💡 Идеяҳо барои контент\n• ⚡ Сарлавҳаҳои ҷолиб\n\n<b>Забонро интихоб кунед / Выберите язык:</b>",
         "main_menu": "👋 Менюи асосӣ\n\n✨ Интихоб кунед, чи сохтан мехоҳед:",
         "choose_niche": "🏢 Барои кадом бизнес контент лозим аст?",
         "choose_count": "🔢 Чанд идея тайёр кунам?",
@@ -83,15 +86,15 @@ TEXTS = {
         "generating": "⏳ AI контентро месозам...\n\nЧанд сония вақт мегирад...",
         "no_topic": "❌ Чунин мавзӯъ нест. Аз рӯйхати боло интихоб кунед.",
         "limit_reached": "❌ Лимит ба охир расид!\n\n💡 Генерацияҳои ройгони шумо барои имрӯз тамом шуданд.\n\n🚀 Бештар гиред:\n• Дӯстро даъват кунед — +{ref_bonus} генерация\n• Обунаи Oson — {oson_limit} генерация/рӯз\n• Ё Professional — беҳад!",
-        "premium_info": "⭐ <b>Обунаҳои Premium</b>\n\n🆓 <b>Free</b> — {free_limit} генерация/рӯз\n   Нишони обуна (watermark)\n\n💚 <b>Oson</b> — {oson_price} сомонӣ/моҳ\n   • {oson_limit} генерация/рӯз\n   • Бе watermark\n   • Ҳама нишаҳо\n\n💎 <b>Professional</b> — {pro_price} сомонӣ/моҳ\n   • Беҳад генерация\n   • Бе watermark\n   • Ҳама нишаҳо + аввалият\n\n🏢 <b>Business</b> — {biz_price} сомонӣ/моҳ\n   • Ҳама аз Professional\n   • White-label + API дастрасӣ",
-        "support": "📞 <b>Дастгирӣ</b>\n\nСавол ё пешниҳод доред?\nБинависед: @sozanda_support\n\n🤝 Барои ҳамкорӣ ва реклама:\n@sozanda_admin",
+        "premium_info": "⭐ <b>Обунаҳои Premium TojikAI</b>\n\nҲамаи бартариятҳо дар обунаҳои мо дастрас аст.",
+        "support": "📞 <b>Дастгирии TojikAI</b>\n\nСавол ё пешниҳод доред?\nБинависед: @tojikai_support\n\n🤝 Барои ҳамкорӣ ва реклама:\n@tojikai_support",
         "history_empty": "📭 Таърих холӣ аст. Аввалин контенти худро бисозед!",
         "history_title": "📋 <b>Таърихи генерацияҳои шумо</b>\n\n",
         "language_set": "✅ Забон танзим шуд: {lang}",
-        "stats": "📊 <b>Омори шумо</b>\n\n🆔 ID: {user_id}\n🌍 Забон: {lang}\n📅 Санаи бақайдгирӣ: {reg_date}\n\n📈 Генерацияҳои имрӯз: {today}/{limit}\n📈 Ҳамаи генерацияҳо: {total}\n👥 Даъват шудаанд: {refs}\n\n💳 Тариф: {plan}",
+        "stats": "📊 <b>Омори шумо дар TojikAI</b>\n\n🆔 ID: {user_id}\n🌍 Забон: {lang}\n📅 Санаи бақайдгирӣ: {reg_date}\n\n📈 Генерацияҳои имрӯз: {today}/{limit}\n📈 Ҳамаи генерацияҳо: {total}\n👥 Даъват шудаанд: {refs}\n\n💳 Тариф: {plan}",
     },
     "uz": {
-        "welcome": "👋 <b>Sozanda</b> botiga xush kelibsiz!\n\n🤖 Men — biznesingiz uchun ommabop va virusli kontentlar yaratuvchi sun'iy intellekt (AI) botiman.\n\n✨ Nimalar qila olaman:\n• 🎬 Reels / Video ssenariylar va virusli hooklar\n• 📝 Instagram uchun mukammal postlar\n• 📸 Stories g'oyalari\n• 💡 Kreativ kontent g'oyalari\n• ⚡ Jalb qiluvchi sarlavhalar\n\n<b>Tilni tanlang / Забонро интихоб кунед / Выберите язык:</b>",
+        "welcome": "👋 <b>TojikAI</b> botiga xush kelibsiz!\n\n🤖 Men — biznesingiz uchun ommabop va virusli kontentlar yaratuvchi sun'iy intellekt (AI) botiman.\n\n✨ Nimalar qila olaman:\n• 🎬 Reels / Video ssenariylar va virusli hooklar\n• 📝 Instagram uchun mukammal postlar\n• 📸 Stories g'oyalari\n• 💡 Kreativ kontent g'oyalari\n• ⚡ Jalb qiluvchi sarlavhalar\n\n<b>Tilni tanlang / Забонро интихоб кунед / Выберите язык:</b>",
         "main_menu": "👋 Asosiy menyu\n\n✨ Nimani yaratishni xohlaysiz?",
         "choose_niche": "🏢 Qaysi soha (nisha) uchun kontent kerak?",
         "choose_count": "🔢 Nechta g'oya tayyorlash kerak?",
@@ -99,18 +102,23 @@ TEXTS = {
         "generating": "⏳ AI orqali kontent yaratilmoqda...\n\nBu bir necha soniya vaqt oladi...",
         "no_topic": "❌ Bunday mavzu yo'q. Yuqoridagi ro'yxatdan tanlang.",
         "limit_reached": "❌ Kunlik limit tugadi!\n\n💡 Bugungi bepul generatsiyalaringiz yakunlandi.\n\n🚀 Ko'proq imkoniyat oling:\n• Do'shingizni taklif qiling — +{ref_bonus} ta generatsiya\n• Oson tarifiga ulaning — kuniga {oson_limit} ta generatsiya\n• Yoki Professional — cheksiz!",
-        "premium_info": "⭐ <b>Premium obunalar</b>\n\n🆓 <b>Free</b> — kuniga {free_limit} ta generatsiya\n   Kontentda suv belgisi bo'ladi\n\n💚 <b>Oson</b> — {oson_price} so'm/oy (yoki 29 somoni)\n   • Kuniga {oson_limit} ta generatsiya\n   • Suv belgisiz (no watermark)\n   • Barcha sohalar\n\n💎 <b>Professional</b> — {pro_price} so'm/oy (yoki 79 somoni)\n   • Cheksiz generatsiyalar\n   • Suv belgisiz (no watermark)\n   • Barcha sohalar + Premium tezlik\n\n🏢 <b>Business</b> — {biz_price} so'm/oy\n   • Professional barcha imkoniyatlari\n   • White-label va API kirish",
-        "support": "📞 <b>Yordam va Aloqa</b>\n\nSavollaringiz yoki takliflaringiz bormi?\nBizga yozing: @sozanda_support\n\n🤝 Hamkorlik va reklama masalalari bo'yicha:\n@sozanda_admin",
+        "premium_info": "⭐ <b>TojikAI Premium obunalar</b>\n\nBarcha professional imkoniyatlar sizlar uchun.",
+        "support": "📞 <b>Yordam va Aloqa TojikAI</b>\n\nSavollaringiz yoki takliflaringiz bormi?\nBizga yozing: @tojikai_support\n\n🤝 Hamkorlik va reklama masalalari bo'yicha:\n@tojikai_support",
         "history_empty": "📭 Tarix bo'sh. Birinchi kontentingizni yarating!",
         "history_title": "📋 <b>Sizning generatsiyalar tarixingiz</b>\n\n",
         "language_set": "✅ Til o'rnatildi: {lang}",
-        "stats": "📊 <b>Sizning statistikangiz</b>\n\n🆔 ID: {user_id}\n🌍 Til: {lang}\n📅 Ro'yxatdan o'tilgan sana: {reg_date}\n\n📈 Bugungi generatsiyalar: {today}/{limit}\n📈 Jami generatsiyalar: {total}\n👥 Taklif qilingan do'stlar: {refs}\n\n💳 Tarif: {plan}",
+        "stats": "📊 <b>Sizning statistikangiz TojikAI</b>\n\n🆔 ID: {user_id}\n🌍 Til: {lang}\n📅 Ro'yxatdan o'tilgan sana: {reg_date}\n\n📈 Bugungi generatsiyalar: {today}/{limit}\n📈 Jami generatsiyalar: {total}\n👥 Taklif qilingan do'stlar: {refs}\n\n💳 Tarif: {plan}",
     }
 }
 
 
-def get_text(user_id: int, key: str, **kwargs) -> str:
-    lang = user_languages.get(user_id, "ru")
+async def get_text(user_id: int, key: str, state: FSMContext, **kwargs) -> str:
+    state_data = await state.get_data()
+    lang = state_data.get("language")
+    if not lang:
+        user = await get_user(user_id)
+        lang = user.get("language", "ru") if user else "ru"
+        await state.update_data(language=lang)
     text = TEXTS.get(lang, TEXTS["ru"]).get(key, key)
     return text.format(**kwargs) if kwargs else text
 
@@ -128,75 +136,114 @@ class QuizStates(StatesGroup):
 class GameStates(StatesGroup):
     answering_event = State()
 
+class GenerationStates(StatesGroup):
+    selecting_niche = State()
+    selecting_count = State()
+    selecting_topic = State()
+
+
 # ============================================
-# ГЛАВНОЕ МЕНЮ — Callback
+# ГЛАВНОЕ МЕНЮ И УНИВЕРСАЛЬНЫЕ НАВИГАЦИИ
 # ============================================
 
 @router.callback_query(F.data == "main_menu")
 async def show_main_menu_callback(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     user_id = callback.from_user.id
-    lang = user_languages.get(user_id, "ru")
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    await state.update_data(language=lang)
     await callback.answer()
     await callback.message.edit_text(
-        get_text(user_id, "main_menu"),
+        await get_text(user_id, "main_menu", state),
+        reply_markup=get_main_menu(lang)
+    )
+
+
+@router.callback_query(F.data == "back_to_main")
+async def back_to_main_callback(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    await state.update_data(language=lang)
+    await callback.answer()
+    await callback.message.answer(
+        await get_text(user_id, "main_menu", state),
+        reply_markup=get_main_menu(lang)
+    )
+
+
+@router.message(F.text.in_([
+    "🏠 Главное меню", "🏠 Менюи асосӣ", "🏠 Asosiy menyu"
+]))
+async def back_to_main_text(message: Message, state: FSMContext):
+    await state.clear()
+    user_id = message.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    await state.update_data(language=lang)
+    await message.answer(
+        await get_text(user_id, "main_menu", state),
         reply_markup=get_main_menu(lang)
     )
 
 
 # ============================================
-# ГЛАВНОЕ МЕНЮ — Текстовые кнопки
+# ГЕНЕРАТОРЫ И ПОДРАЗДЕЛЫ КОНТЕНТА
 # ============================================
 
 @router.message(F.text.in_([
     "🎬 Контент AI", "🎬 AI Контент", "🎬 AI мундод",
     "🎬 AI Reels/Kreativ", "🎬 AI Reels", "🎬 Reels"
 ]))
-async def reels_menu(message: Message):
+async def reels_menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     country = user.get("country", "uz") if user else "uz"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang, country=country)
 
+    await state.set_state(GenerationStates.selecting_niche)
     await message.answer(
-        get_text(user_id, "choose_niche"),
+        await get_text(user_id, "choose_niche", state),
         reply_markup=get_niche_menu(lang, country=country)
     )
 
 
 @router.message(F.text.in_(["📝 Посты", "📝 Постҳо", "📝 Postlar"]))
-async def posts_menu(message: Message):
+async def posts_menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     country = user.get("country", "uz") if user else "uz"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang, country=country)
 
     # Проверка на суперадмина
     is_admin = (str(user_id) == str(ADMIN_ID))
     if not is_admin:
-        can_generate, limit_info = await check_daily_limit(user_id)
+        can_generate, _ = await check_daily_limit(user_id)
         if not can_generate:
             await message.answer(
-                get_text(user_id, "limit_reached",
+                await get_text(user_id, "limit_reached", state,
                          ref_bonus=REFERRAL_BONUS_GENERATIONS,
                          oson_limit=OSON_DAILY_LIMIT)
             )
             return
+    await state.set_state(GenerationStates.selecting_niche)
     await message.answer(
-        get_text(user_id, "choose_niche"),
+        await get_text(user_id, "choose_niche", state),
         reply_markup=get_niche_menu(lang, country=country)
     )
 
 
 @router.message(F.text.in_(["📸 Stories", "📸 Сториз"]))
-async def stories_menu(message: Message):
+async def stories_menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     country = user.get("country", "uz") if user else "uz"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang, country=country)
 
     # Проверка на суперадмина
     is_admin = (str(user_id) == str(ADMIN_ID))
@@ -204,24 +251,25 @@ async def stories_menu(message: Message):
         can_generate, _ = await check_daily_limit(user_id)
         if not can_generate:
             await message.answer(
-                get_text(user_id, "limit_reached",
+                await get_text(user_id, "limit_reached", state,
                          ref_bonus=REFERRAL_BONUS_GENERATIONS,
                          oson_limit=OSON_DAILY_LIMIT)
             )
             return
+    await state.set_state(GenerationStates.selecting_niche)
     await message.answer(
-        get_text(user_id, "choose_niche"),
+        await get_text(user_id, "choose_niche", state),
         reply_markup=get_niche_menu(lang, country=country)
     )
 
 
 @router.message(F.text.in_(["💡 Идеи", "💡 Идеяҳо", "💡 G'oyalar"]))
-async def ideas_menu(message: Message):
+async def ideas_menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     country = user.get("country", "uz") if user else "uz"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang, country=country)
 
     # Проверка на суперадмина
     is_admin = (str(user_id) == str(ADMIN_ID))
@@ -229,88 +277,172 @@ async def ideas_menu(message: Message):
         can_generate, _ = await check_daily_limit(user_id)
         if not can_generate:
             await message.answer(
-                get_text(user_id, "limit_reached",
+                await get_text(user_id, "limit_reached", state,
                          ref_bonus=REFERRAL_BONUS_GENERATIONS,
                          oson_limit=OSON_DAILY_LIMIT)
             )
             return
+    await state.set_state(GenerationStates.selecting_niche)
     await message.answer(
-        get_text(user_id, "choose_niche"),
+        await get_text(user_id, "choose_niche", state),
         reply_markup=get_niche_menu(lang, country=country)
     )
 
 
-@router.message(F.text.in_(["⭐ Premium", "⭐ Премиум", "⭐ Premium obuna", "⭐ Premium тарифҳо"]))
-async def premium_menu(message: Message):
-    user_id = message.from_user.id
-    user = await get_user(user_id)
-    lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
-
-    prices_somoni = {"oson": "29", "pro": "79", "biz": "199"}
-    prices_uzs = {
-        "oson": f"{TARIFFS['oson'].price_monthly:,}",
-        "pro": f"{TARIFFS['pro'].price_monthly:,}",
-        "biz": f"{TARIFFS['business'].price_monthly:,}"
-    }
-
-    if lang == "uz":
-        text = get_text(user_id, "premium_info",
-                 free_limit=FREE_DAILY_LIMIT,
-                 oson_price=prices_uzs["oson"],
-                 oson_limit=OSON_DAILY_LIMIT,
-                 pro_price=prices_uzs["pro"],
-                 biz_price=prices_uzs["biz"])
-    else:
-        text = get_text(user_id, "premium_info",
-                 free_limit=FREE_DAILY_LIMIT,
-                 oson_price=prices_somoni["oson"],
-                 oson_limit=OSON_DAILY_LIMIT,
-                 pro_price=prices_somoni["pro"],
-                 biz_price=prices_somoni["biz"])
-
-    await message.answer(
-        text,
-        reply_markup=get_subscription_menu(lang),
-        parse_mode="HTML"
-    )
-
-
 # ============================================
-# РЕФЕРАЛКА — Текстовая кнопка → callback кнопка
+# РЕФЕРАЛЬНАЯ СИСТЕМА
 # ============================================
 
 @router.message(F.text.in_(["👥 Рефералка", "👥 Даъват", "👥 Давват", "👥 Hamkorlik (Do'stlar)"]))
-async def referral_menu(message: Message):
+async def referral_menu_text(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
-
-    builder = InlineKeyboardBuilder()
+    await state.update_data(language=lang)
 
     if lang == "uz":
-        btn_text = "🚀 Taklif dasturiga o'tish"
-        prompt = "👇 Takliflar bo'limini ochish uchun quyidagi tugmani bosing:"
+        prompt = "💎 <b>TojikAI Hamkorlik dasturi</b>\n\nDo'stlaringizni taklif qiling va har bir faol foydalanuvchi uchun premium generatsiyalar va bonus ballarga ega bo'ling!"
     elif lang == "tg":
-        btn_text = "🚀 Ба бахши даъват гузаред"
-        prompt = "👇 Барои кушодани барномаи даъват тугмаро пахш кунед:"
+        prompt = "💎 <b>Барномаи ҳамкории TojikAI</b>\n\nДӯстони худро даъват кунед ва барои ҳар як корбари нав генерацияҳои бонусӣ гиред!"
     else:
-        btn_text = "🚀 Перейти к рефералке"
-        prompt = "👇 Нажмите кнопку ниже, чтобы открыть реферальную программу:"
+        prompt = "💎 <b>Партнерская программа TojikAI</b>\n\nПриглашайте друзей по вашей ссылке и получайте бонусные генерации и повышение статуса партнера!"
 
-    builder.row(InlineKeyboardButton(text=btn_text, callback_data="referral_main"))
-    await message.answer(prompt, reply_markup=builder.as_markup())
+    await message.answer(prompt, reply_markup=get_referral_keyboard(lang), parse_mode="HTML")
 
 
-@router.message(F.text.in_(["📊 Статистика", "📊 Омор", "📊 Statistika"]))
-async def stats_menu(message: Message):
-    user_id = message.from_user.id
+@router.callback_query(F.data == "referral_main")
+async def referral_main_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang)
 
+    if lang == "uz":
+        prompt = "💎 <b>TojikAI Hamkorlik dasturi</b>\n\nDo'stlaringizni taklif qiling va har bir faol foydalanuvchi uchun premium generatsiyalar va bonus ballarga ega bo'ling!"
+    elif lang == "tg":
+        prompt = "💎 <b>Барномаи ҳамкории TojikAI</b>\n\nДӯстони худро даъват кунед ва барои ҳар як корбари нав генерацияҳои бонусӣ гиред!"
+    else:
+        prompt = "💎 <b>Партнерская программа TojikAI</b>\n\nПриглашайте друзей по вашей ссылке и получайте бонусные генерации и повышение статуса партнера!"
+
+    await callback.message.edit_text(prompt, reply_markup=get_referral_keyboard(lang), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "ref_stats")
+async def referral_stats_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
     stats = await get_user_stats(user_id)
+    lang = stats.get("language", "ru")
+
+    from database.models import get_referral_link
+    ref_link = await get_referral_link(user_id)
+
+    if lang == "uz":
+        text = f"""📊 <b>Hamkorlik statistikasi:</b>
+
+🏆 <b>Hamkorlik darajasi (Tier):</b> {stats.get('referral_tier', 'Bronze')}
+👥 <b>Jami taklif etilganlar:</b> {stats.get('referral_count', 0)} ta
+🎯 <b>Faol do'stlar:</b> {stats.get('referral_active_count', 0)} ta
+💰 <b>Hamkorlik ballari:</b> {stats.get('referral_points', 0)} ball
+
+🔗 <b>Sizning taklif havolangiz:</b>
+<code>{ref_link}</code>"""
+    elif lang == "tg":
+        text = f"""📊 <b>Омори барномаи даъватӣ:</b>
+
+🏆 <b>Сатҳи шарикӣ (Tier):</b> {stats.get('referral_tier', 'Bronze')}
+👥 <b>Ҳамаи даъватшудагон:</b> {stats.get('referral_count', 0)} нафар
+🎯 <b>Дӯстони фаъол:</b> {stats.get('referral_active_count', 0)} нафар
+💰 <b>Баллҳои шарикӣ:</b> {stats.get('referral_points', 0)} балл
+
+🔗 <b>Пайванди даъватии шумо:</b>
+<code>{ref_link}</code>"""
+    else:
+        text = f"""📊 <b>Статистика вашей партнерской программы:</b>
+
+🏆 <b>Ранг партнера (Tier):</b> {stats.get('referral_tier', 'Bronze')}
+👥 <b>Всего приглашено:</b> {stats.get('referral_count', 0)} чел.
+🎯 <b>Активные пользователи:</b> {stats.get('referral_active_count', 0)} чел.
+💰 <b>Бонусные баллы:</b> {stats.get('referral_points', 0)} pts
+
+🔗 <b>Ваша реферальная ссылка:</b>
+<code>{ref_link}</code>"""
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⬅️ Назад / Ortga", callback_data="referral_main"))
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "ref_bonuses")
+async def referral_bonuses_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    stats = await get_user_stats(user_id)
+    lang = stats.get("language", "ru")
+
+    if lang == "uz":
+        text = """🎁 <b>Hamkorlik mukofotlari tizimi:</b>
+
+• <b>Bronze</b> (Boshlang'ich) — har bir do'stingiz uchun +3 ta bepul generatsiya!
+• <b>Silver</b> (50 ball) — har bir do'stingiz uchun +5 ta generatsiya + TojikAI tajribasi (XP)!
+• <b>Gold</b> (100 ball) — 1 kunlik Premium sinov muddati!
+• <b>Platinum</b> (200 ball) — 3 kunlik to'liq Professional Premium obuna!"""
+    elif lang == "tg":
+        text = """🎁 <b>Тизми мукофотии шарикӣ:</b>
+
+• <b>Bronze</b> (Ибтидоӣ) — барои ҳар як дӯст +3 генерацияи ройгон!
+• <b>Silver</b> (50 балл) — барои ҳар як дӯст +5 генерация + холҳои таҷриба (XP)!
+• <b>Gold</b> (100 балл) — 1 рӯз Premium-и ройгон!
+• <b>Platinum</b> (200 балл) — 3 рӯз обунаи Professional Premium!"""
+    else:
+        text = """🎁 <b>Система партнерских наград TojikAI:</b>
+
+• <b>Bronze</b> (Старт) — +3 генерации за каждого друга!
+• <b>Silver</b> (50 pts) — +5 генераций за друга + XP для Бизнес Империи!
+• <b>Gold</b> (100 pts) — 1 день бесплатного Premium-доступа!
+• <b>Platinum</b> (200 pts) — 3 дня полной подписки Professional!"""
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⬅️ Назад / Ortga", callback_data="referral_main"))
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "ref_top")
+async def referral_top_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+
+    from database.models import get_top_referrers
+    top_list = await get_top_referrers(limit=10)
+
+    if lang == "uz":
+        text = "🏆 <b>Eng yaxshi hamkorlar (Top-10):</b>\n\n"
+    elif lang == "tg":
+        text = "🏆 <b>Пешсафони барномаи даъватӣ (Top-10):</b>\n\n"
+    else:
+        text = "🏆 <b>Топ-10 лучших партнеров TojikAI:</b>\n\n"
+
+    for i, r in enumerate(top_list, 1):
+        text += f"{i}. <b>{r['name']}</b> — {r['ref_count']} takliflar/даъватҳо\n"
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⬅️ Назад / Ortga", callback_data="referral_main"))
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+# ============================================
+# СТАТИСТИКА, ИСТОРИЯ И ПОДДЕРЖКА
+# ============================================
+
+@router.message(F.text.in_(["📊 Статистика", "📊 Омор", "📊 Statistika"]))
+async def stats_menu(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    stats = await get_user_stats(user_id)
+    lang = stats.get("language", "ru")
+
     sub = await get_user_subscription(user_id)
     plan_name = "Free"
     if sub:
@@ -322,7 +454,7 @@ async def stats_menu(message: Message):
             plan_name = "Business"
 
     await message.answer(
-        get_text(user_id, "stats",
+        await get_text(user_id, "stats", state,
                  user_id=user_id,
                  lang="O'zbek tili" if lang == "uz" else ("Тоҷикӣ" if lang == "tg" else "Русский"),
                  reg_date=stats.get("created_at", "N/A"),
@@ -336,97 +468,102 @@ async def stats_menu(message: Message):
 
 
 @router.message(F.text.in_(["📋 История", "📋 Таърих", "📋 Tarix"]))
-async def history_menu(message: Message):
+async def history_menu(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    user = await get_user(user_id)
-    lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
-
     history = await get_generation_history(user_id, limit=10)
     if not history:
-        await message.answer(get_text(user_id, "history_empty"))
+        await message.answer(await get_text(user_id, "history_empty", state))
         return
-    text = get_text(user_id, "history_title")
+    text = await get_text(user_id, "history_title", state)
     for i, item in enumerate(history, 1):
         text += f"{i}. <b>{item['niche']}</b> — {item['topic'][:50]}...\n"
         text += f"   📅 {item['created_at']}\n\n"
     await message.answer(text, parse_mode="HTML")
 
 
+@router.message(F.text.in_(["📞 Поддержка", "📞 Дастгирӣ", "📞 Yordam / Aloqa"]))
+async def support_menu(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    await message.answer(await get_text(user_id, "support", state), parse_mode="HTML")
+
+
 # ============================================
-# ГЕЙМИФИКАЦИЯ: БИЗНЕС ИМПЕРИЯ
+# ГЕЙМИФИКАЦИЯ: БИЗНЕС ИМПЕРИЯ (v2.0 Глубокая симуляция)
 # ============================================
+
+RANKS = ["Новичок", "Предприниматель", "Бизнесмен", "Инвестор", "Магнат", "Миллионер", "Миллиардер", "Легенда бизнеса"]
+CITIES = ["Душанбе", "Худжанд", "Бохтар", "Куляб", "Ташкент", "Самарканд", "Бухара"]
 
 @router.message(F.text.in_(["🎮 Бизнес-Игра", "🎮 Бозии тиҷорат", "🎮 Biznes o'yini", "🎮 Бизнес Империя"]))
 async def start_business_game(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang)
 
     from database.models import get_or_create_business_empire
     profile = await get_or_create_business_empire(user_id, message.from_user.username)
 
-    # Рассчитываем ежедневный доход от бизнесов на основе количества клиентов
-    import json
+    # Прогресс уровня
+    current_xp = profile.get("xp", 0)
+    level = profile.get("level", 1)
+    rank_index = min(level - 1, len(RANKS) - 1)
+    rank = RANKS[rank_index]
+
+    businesses_json = profile.get("businesses", "[]") or "[]"
     try:
-        opened = json.loads(profile["businesses"] or "[]")
+        opened = json.loads(businesses_json)
     except:
         opened = []
 
-    from gamification.scenarios import BUSINESS_TYPES
-    passive_income = 0
-    for b_key in opened:
-        b_meta = BUSINESS_TYPES.get(b_key)
-        if b_meta:
-            passive_income += b_meta["income_per_client"] * (profile["clients"] or 1)
+    # Расчет доходов
+    passive_income = (profile.get("clients", 0) * 2) + (profile.get("employees", 0) * 5) + (len(opened) * 50)
 
-    # Текстовка
     if lang == "uz":
-        text = f"""<b>🎮 Biznes Imperiya — Sarlavha</b>
+        text = f"""<b>🎮 TojikAI Biznes Imperiyasi (v2.0)</b>
 
-Sizning imperiyangiz holati:
-🏆 <b>Daraja (Level):</b> {profile['level']} ({profile['xp']} XP)
-💰 <b>Balans:</b> {profile['balance']} somoni
-👥 <b>Mijozlar:</b> {profile['clients']} ta
-👔 <b>Xodimlar:</b> {profile['employees']} ta
-📈 <b>Bizneslar soni:</b> {len(opened)} ta
+🏆 <b>Sizning unvoningiz:</b> {rank} (Level {level})
+📍 <b>Hozirgi shahar:</b> {profile.get('city', 'Dushanbe')}
+💰 <b>Balans:</b> {profile.get('balance', 1000)} somoni
+👥 <b>Mijozlar:</b> {profile.get('clients', 0)} ta
+👔 <b>Xodimlar jamoasi:</b> {profile.get('employees', 0)} ta
+🏢 <b>Ochilgan korxonalar:</b> {len(opened)} ta
 
-📊 <b>Suhbat / Passiv daromad:</b> +{passive_income} somoni / kuniga
+📊 <b>Passiv kunlik daromad:</b> +{passive_income} somoni / kuniga
 
-Biznesingizni kengaytiring, tasodifiy voqealarni hal qiling va eng boy tadbirkorga aylaning!"""
+Biznesingizni yirik shaharlarda kengaytiring, tasodifiy krizislarni bartaraf qiling va afsonaviy tadbirkorga aylaning!"""
         btn_case = "🎲 Tasodifiy voqea (Keys)"
         btn_buy = "🏢 Yangi biznes ochish"
         btn_top = "🏆 Liderlar jadvali"
     elif lang == "tg":
-        text = f"""<b>🎮 Бизнес Империя — Саҳифаи Асосӣ</b>
+        text = f"""<b>🎮 Империяи Тиҷоратии TojikAI (v2.0)</b>
 
-Ҳолати империяи шумо:
-🏆 <b>Сатҳ (Level):</b> {profile['level']} ({profile['xp']} XP)
-💰 <b>Баланс:</b> {profile['balance']} сомонӣ
-👥 <b>Мизоҷон:</b> {profile['clients']} нафар
-👔 <b>Кормандон:</b> {profile['employees']} нафар
-📈 <b>Шумораи тиҷоратҳо:</b> {len(opened)} адад
+🏆 <b>Рутбаи шумо:</b> {rank} (Level {level})
+📍 <b>Шаҳри фаъол:</b> {profile.get('city', 'Душанбе')}
+💰 <b>Тавозун (Баланс):</b> {profile.get('balance', 1000)} сомонӣ
+👥 <b>Мизоҷони умумӣ:</b> {profile.get('clients', 0)} нафар
+👔 <b>Ҳайати кормандон:</b> {profile.get('employees', 0)} нафар
+🏢 <b>Тиҷоратҳои кушода:</b> {len(opened)} адад
 
-📊 <b>Даромади ғайрифаъол:</b> +{passive_income} сомонӣ / рӯзона
+📊 <b>Даромади пассиви рӯзона:</b> +{passive_income} сомонӣ / рӯзона
 
-Тиҷорати худро васеъ кунед, чорабиниҳои тасодуфиро ҳал намоед ва соҳибкори муваффақ шавед!"""
+Империяи худро дар шаҳрҳои калонтарин васеъ кунед, мушкилоти иқтисодиро ҳал намоед ва соҳибкори афсонавӣ шавед!"""
         btn_case = "🎲 Ҳодисаи тасодуфӣ (Keys)"
         btn_buy = "🏢 Кушодани тиҷорати нав"
         btn_top = "🏆 Ҷадвали пешсафон"
     else:
-        text = f"""<b>🎮 Бизнес Империя — Главная панель</b>
+        text = f"""<b>🎮 Бизнес Империя TojikAI (v2.0)</b>
 
-Статус вашей империи:
-🏆 <b>Уровень:</b> {profile['level']} ({profile['xp']} XP)
-💰 <b>Баланс:</b> {profile['balance']} сомони
-👥 <b>Клиенты:</b> {profile['clients']} чел.
-👔 <b>Сотрудники:</b> {profile['employees']} чел.
-📈 <b>Количество бизнесов:</b> {len(opened)} шт.
+🏆 <b>Ваш ранг:</b> {rank} (Уровень {level})
+📍 <b>Текущий город:</b> {profile.get('city', 'Душанбе')}
+💰 <b>Баланс:</b> {profile.get('balance', 1000)} сомони
+👥 <b>Клиенты:</b> {profile.get('clients', 0)} чел.
+👔 <b>Сотрудники в штате:</b> {profile.get('employees', 0)} чел.
+🏢 <b>Открытые филиалы:</b> {len(opened)} шт.
 
 📊 <b>Пассивный доход:</b> +{passive_income} сомони / день
 
-Развивайте предприятия, решайте сложные кейсы и станьте топ-предпринимателем Центральной Азии!"""
+Развивайте предприятия во всех крупнейших городах, нанимайте профессионалов, решайте кейсы и завоюйте рынок!"""
         btn_case = "🎲 Случайное событие (Кейс)"
         btn_buy = "🏢 Открыть новый бизнес"
         btn_top = "🏆 Таблица лидеров"
@@ -441,63 +578,63 @@ Biznesingizni kengaytiring, tasodifiy voqealarni hal qiling va eng boy tadbirkor
 
 @router.callback_query(F.data == "game_back")
 async def handle_game_back(callback: CallbackQuery, state: FSMContext):
-    await state.clear()
     user_id = callback.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
+    await state.update_data(language=lang)
 
     from database.models import get_or_create_business_empire
     profile = await get_or_create_business_empire(user_id, callback.from_user.username)
-    import json
+
+    level = profile.get("level", 1)
+    rank_index = min(level - 1, len(RANKS) - 1)
+    rank = RANKS[rank_index]
+
+    businesses_json = profile.get("businesses", "[]") or "[]"
     try:
-        opened = json.loads(profile["businesses"] or "[]")
+        opened = json.loads(businesses_json)
     except:
         opened = []
 
-    from gamification.scenarios import BUSINESS_TYPES
-    passive_income = 0
-    for b_key in opened:
-        b_meta = BUSINESS_TYPES.get(b_key)
-        if b_meta:
-            passive_income += b_meta["income_per_client"] * (profile["clients"] or 1)
+    passive_income = (profile.get("clients", 0) * 2) + (profile.get("employees", 0) * 5) + (len(opened) * 50)
 
     if lang == "uz":
-        text = f"""<b>🎮 Biznes Imperiya — Sarlavha</b>
+        text = f"""<b>🎮 TojikAI Biznes Imperiyasi (v2.0)</b>
 
-Sizning imperiyangiz holati:
-🏆 <b>Daraja (Level):</b> {profile['level']} ({profile['xp']} XP)
-💰 <b>Balans:</b> {profile['balance']} somoni
-👥 <b>Mijozlar:</b> {profile['clients']} ta
-👔 <b>Xodimlar:</b> {profile['employees']} ta
-📈 <b>Bizneslar soni:</b> {len(opened)} ta
+🏆 <b>Sizning unvoningiz:</b> {rank} (Level {level})
+📍 <b>Hozirgi shahar:</b> {profile.get('city', 'Dushanbe')}
+💰 <b>Balans:</b> {profile.get('balance', 1000)} somoni
+👥 <b>Mijozlar:</b> {profile.get('clients', 0)} ta
+👔 <b>Xodimlar jamoasi:</b> {profile.get('employees', 0)} ta
+🏢 <b>Ochilgan korxonalar:</b> {len(opened)} ta
 
-📊 <b>Suhbat / Passiv daromad:</b> +{passive_income} somoni / kuniga"""
+📊 <b>Passiv kunlik daromad:</b> +{passive_income} somoni / kuniga"""
         btn_case = "🎲 Tasodifiy voqea (Keys)"
         btn_buy = "🏢 Yangi biznes ochish"
         btn_top = "🏆 Liderlar jadvali"
     elif lang == "tg":
-        text = f"""<b>🎮 Бизнес Империя — Саҳифаи Асосӣ</b>
+        text = f"""<b>🎮 Империяи Тиҷоратии TojikAI (v2.0)</b>
 
-Ҳолати империяи шумо:
-🏆 <b>Сатҳ (Level):</b> {profile['level']} ({profile['xp']} XP)
-💰 <b>Баланс:</b> {profile['balance']} сомонӣ
-👥 <b>Мизоҷон:</b> {profile['clients']} нафар
-👔 <b>Кормандон:</b> {profile['employees']} нафар
-📈 <b>Шумораи тиҷоратҳо:</b> {len(opened)} адад
+🏆 <b>Рутбаи шумо:</b> {rank} (Level {level})
+📍 <b>Шаҳри фаъол:</b> {profile.get('city', 'Душанбе')}
+💰 <b>Тавозун (Баланс):</b> {profile.get('balance', 1000)} сомонӣ
+👥 <b>Мизоҷони умумӣ:</b> {profile.get('clients', 0)} нафар
+👔 <b>Ҳайати кормандон:</b> {profile.get('employees', 0)} нафар
+🏢 <b>Тиҷоратҳои кушода:</b> {len(opened)} адад
 
-📊 <b>Даромади ғайрифаъол:</b> +{passive_income} сомонӣ / рӯзона"""
+📊 <b>Даромади пассиви рӯзона:</b> +{passive_income} сомонӣ / рӯзона"""
         btn_case = "🎲 Ҳодисаи тасодуфӣ (Keys)"
         btn_buy = "🏢 Кушодани тиҷорати нав"
         btn_top = "🏆 Ҷадвали пешсафон"
     else:
-        text = f"""<b>🎮 Бизнес Империя — Главная панель</b>
+        text = f"""<b>🎮 Бизнес Империя TojikAI (v2.0)</b>
 
-Статус вашей империи:
-🏆 <b>Уровень:</b> {profile['level']} ({profile['xp']} XP)
-💰 <b>Баланс:</b> {profile['balance']} сомони
-👥 <b>Клиенты:</b> {profile['clients']} чел.
-👔 <b>Сотрудники:</b> {profile['employees']} чел.
-📈 <b>Количество бизнесов:</b> {len(opened)} шт.
+🏆 <b>Ваш ранг:</b> {rank} (Уровень {level})
+📍 <b>Текущий город:</b> {profile.get('city', 'Душанбе')}
+💰 <b>Баланс:</b> {profile.get('balance', 1000)} сомони
+👥 <b>Клиенты:</b> {profile.get('clients', 0)} чел.
+👔 <b>Сотрудники в штате:</b> {profile.get('employees', 0)} чел.
+🏢 <b>Открытые филиалы:</b> {len(opened)} шт.
 
 📊 <b>Пассивный доход:</b> +{passive_income} сомони / день"""
         btn_case = "🎲 Случайное событие (Кейс)"
@@ -571,6 +708,14 @@ async def handle_game_event_choice(callback: CallbackQuery, state: FSMContext):
     else:
         level_up = False
 
+    rank_index = min(new_level - 1, len(RANKS) - 1)
+    new_rank = RANKS[rank_index]
+
+    # Меняем город случайным образом при уровне
+    new_city = profile.get("city", "Душанбе")
+    if level_up:
+        new_city = random.choice(CITIES)
+
     await update_business_empire(
         user_id=user_id,
         balance=new_balance,
@@ -578,7 +723,13 @@ async def handle_game_event_choice(callback: CallbackQuery, state: FSMContext):
         employees=new_employees,
         level=new_level,
         xp=new_xp,
-        businesses=profile["businesses"]
+        businesses=profile["businesses"],
+        rank=new_rank,
+        city=new_city,
+        unlocked_cities=profile.get("unlocked_cities", '["Душанбе"]'),
+        employees_hired=profile.get("employees_hired", '{}'),
+        achievements=profile.get("achievements", '[]'),
+        daily_tasks=profile.get("daily_tasks", '[]')
     )
 
     # Локализованное резюме результатов
@@ -586,24 +737,24 @@ async def handle_game_event_choice(callback: CallbackQuery, state: FSMContext):
     if opt_data.get("balance_diff", 0) != 0:
         diff_text += f"💰 {'+' if opt_data['balance_diff'] > 0 else ''}{opt_data['balance_diff']} сомони\n"
     if opt_data.get("clients_diff", 0) != 0:
-        diff_text += f"👥 {'+' if opt_data['clients_diff'] > 0 else ''}{opt_data['clients_diff']} клиентов/мизоҷон\n"
+        diff_text += f"👥 {'+' if opt_data['clients_diff'] > 0 else ''}{opt_data['clients_diff']} клиентов\n"
     if opt_data.get("employees_diff", 0) != 0:
         diff_text += f"👔 {'+' if opt_data['employees_diff'] > 0 else ''}{opt_data['employees_diff']} сотрудников\n"
     if opt_data.get("xp_diff", 0) != 0:
         diff_text += f"🏆 +{opt_data['xp_diff']} XP\n"
 
     if lang == "uz":
-        res_msg = f"<b>Результаты вашего выбора:</b>\n\n{diff_text}"
+        res_msg = f"<b>Siz tanlagan yechim natijasi:</b>\n\n{diff_text}"
         if level_up:
-            res_msg += f"\n🎉 <b>Darajangiz oshdi! Yangi daraja: {new_level}!</b>"
+            res_msg += f"\n🎉 <b>Tabriklaymiz! Darajangiz ko'tarildi: {new_level}! Sizning unvoningiz: {new_rank}, yangi shahar ochildi: {new_city}!</b>"
     elif lang == "tg":
         res_msg = f"<b>Натиҷаи интихоби шумо:</b>\n\n{diff_text}"
         if level_up:
-            res_msg += f"\n🎉 <b>Сатҳи шумо баланд шуд! Сатҳи нав: {new_level}!</b>"
+            res_msg += f"\n🎉 <b>Табрик! Сатҳи шумо баланд шуд: {new_level}! Рутбаи нав: {new_rank}, шаҳри нав кушода шуд: {new_city}!</b>"
     else:
         res_msg = f"<b>Результаты вашего решения:</b>\n\n{diff_text}"
         if level_up:
-            res_msg += f"\n🎉 <b>Поздравляем! Ваш уровень вырос до {new_level}!</b>"
+            res_msg += f"\n🎉 <b>Поздравляем! Ваш уровень вырос до {new_level}! Новый ранг: {new_rank}, открыт новый город: {new_city}!</b>"
 
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="⬅️ Назад в империю / Бозгашт", callback_data="game_back"))
@@ -693,9 +844,8 @@ async def handle_game_buy_action(callback: CallbackQuery):
     new_balance = profile["balance"] - b_data["cost"]
     opened.append(b_key)
 
-    # Даем клиенты и сотрудники за покупку
-    new_clients = profile["clients"] + random.randint(10, 30)
-    new_employees = profile["employees"] + 1
+    new_clients = profile["clients"] + random.randint(15, 45)
+    new_employees = profile["employees"] + 2
 
     await update_business_empire(
         user_id=user_id,
@@ -703,8 +853,14 @@ async def handle_game_buy_action(callback: CallbackQuery):
         clients=new_clients,
         employees=new_employees,
         level=profile["level"],
-        xp=profile["xp"] + 50, # Даем XP за покупку
-        businesses=json.dumps(opened)
+        xp=profile["xp"] + 80,
+        businesses=json.dumps(opened),
+        rank=profile.get("rank", "Новичок"),
+        city=profile.get("city", "Душанбе"),
+        unlocked_cities=profile.get("unlocked_cities", '["Душанбе"]'),
+        employees_hired=profile.get("employees_hired", '{}'),
+        achievements=profile.get("achievements", '[]'),
+        daily_tasks=profile.get("daily_tasks", '[]')
     )
 
     if lang == "tg":
@@ -741,76 +897,34 @@ async def handle_game_leaders(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.text.in_(["📞 Поддержка", "📞 Дастгирӣ", "📞 Yordam / Aloqa"]))
-async def support_menu(message: Message):
-    user_id = message.from_user.id
-    user = await get_user(user_id)
-    lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
-
-    await message.answer(get_text(user_id, "support"), parse_mode="HTML")
-
-
-@router.message(F.text.in_(["⬅️ Назад", "⬅️ Бозгашт", "⬅️ Ortga"]))
-async def back_button(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    user = await get_user(user_id)
-    lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
-
-    # Полный сброс состояния при нажатии Назад в главное меню
-    await state.clear()
-
-    await message.answer(
-        get_text(user_id, "main_menu"),
-        reply_markup=get_main_menu(lang)
-    )
-
-
-@router.callback_query(F.data == "topic_back")
-async def handle_topic_back(callback: CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    user = await get_user(user_id)
-    lang = user.get("language", "ru") if user else "ru"
-    country = user.get("country", "uz") if user else "uz"
-
-    # Возвращаем на выбор ниши
-    await state.clear()
-    await callback.message.answer(
-        get_text(user_id, "choose_niche"),
-        reply_markup=get_niche_menu(lang, country=country)
-    )
-    await callback.answer()
-
-
 # ============================================
 # ВЫБОР НИШИ
 # ============================================
 
-@router.message(lambda msg: is_niche_button(msg.text))
+@router.message(GenerationStates.selecting_niche, lambda msg: is_niche_button(msg.text))
 async def niche_selected(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     country = user.get("country", "uz") if user else "uz"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang, country=country)
 
     # Проверка на суперадмина
     is_admin = (str(user_id) == str(ADMIN_ID))
     if not is_admin:
-        can_generate, limit_info = await check_daily_limit(user_id)
+        can_generate, _ = await check_daily_limit(user_id)
         if not can_generate:
             await message.answer(
-                get_text(user_id, "limit_reached",
+                await get_text(user_id, "limit_reached", state,
                          ref_bonus=REFERRAL_BONUS_GENERATIONS,
                          oson_limit=OSON_DAILY_LIMIT)
             )
             return
     niche_key = get_niche_key_by_text(message.text, country=country)
-    user_niches[user_id] = niche_key
     await state.update_data(niche=niche_key)
+    await state.set_state(GenerationStates.selecting_count)
     await message.answer(
-        get_text(user_id, "choose_count"),
+        await get_text(user_id, "choose_count", state),
         reply_markup=get_count_menu(lang)
     )
 
@@ -821,15 +935,14 @@ async def niche_selected(message: Message, state: FSMContext):
 
 def is_count_button(text: str) -> bool:
     cleaned = text.lower()
-    # Ищет подстроки, соответствующие кнопкам выбора количества идей
     return any(x in cleaned for x in ["идей", "идея", "идеяҳо", "g'oya"])
 
-@router.message(lambda msg: is_count_button(msg.text))
+@router.message(GenerationStates.selecting_count, lambda msg: is_count_button(msg.text))
 async def show_topics(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang)
 
     # Извлекаем только цифры из текста кнопки
     digits = "".join(c for c in message.text if c.isdigit())
@@ -844,7 +957,7 @@ async def show_topics(message: Message, state: FSMContext):
         can_generate, limit_info = await check_daily_limit(user_id)
         if not can_generate:
             await message.answer(
-                get_text(user_id, "limit_reached",
+                await get_text(user_id, "limit_reached", state,
                          ref_bonus=REFERRAL_BONUS_GENERATIONS,
                          oson_limit=OSON_DAILY_LIMIT)
             )
@@ -859,12 +972,14 @@ async def show_topics(message: Message, state: FSMContext):
             else:
                 await message.answer(f"⚠️ Доступно только {count} генераций на сегодня.")
 
-    user_counts[user_id] = count
+    await state.update_data(count=count)
     data = await state.get_data()
-    niche_key = data.get("niche", user_niches.get(user_id, "other"))
+    niche_key = data.get("niche", "other")
     from content_engine.niche_manager import get_topic_ideas
     topics = await get_topic_ideas(niche_key, count, lang)
-    user_topics[user_id] = topics
+
+    # Сохраняем топики прямо в FSMContext! Никаких глобальных словарей!
+    await state.update_data(topics=topics)
 
     if lang == "uz":
         title_text = "📋 Mavzular ro'yxati"
@@ -876,7 +991,9 @@ async def show_topics(message: Message, state: FSMContext):
     text = f"{title_text}:\n\n"
     for index, topic in enumerate(topics, start=1):
         text += f"{index}. {topic['title']}\n"
-    text += f"\n\n{get_text(user_id, 'choose_topic')}"
+    text += f"\n\n{await get_text(user_id, 'choose_topic', state)}"
+
+    await state.set_state(GenerationStates.selecting_topic)
     await message.answer(
         text,
         reply_markup=get_topics_keyboard(len(topics), lang)
@@ -884,45 +1001,151 @@ async def show_topics(message: Message, state: FSMContext):
 
 
 # ============================================
-# ВЫБОР КОНКРЕТНОЙ ТЕМЫ
+# ВЫБОР КОНКРЕТНОЙ ТЕМЫ (ЧЕРЕЗ CALLBACK ИЛИ КЛАВИАТУРУ)
 # ============================================
 
-@router.message(F.text.regexp(r"^\d+$"))
-async def open_topic(message: Message, state: FSMContext):
+@router.callback_query(GenerationStates.selecting_topic, F.data.startswith("topic_"))
+async def open_topic_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    lang = user.get("language", "ru") if user else "ru"
+    country = user.get("country", "uz") if user else "uz"
+    await state.update_data(language=lang, country=country)
+
+    is_admin = (str(user_id) == str(ADMIN_ID))
+    if not is_admin:
+        can_generate, _ = await check_daily_limit(user_id)
+        if not can_generate:
+            await callback.message.answer(
+                await get_text(user_id, "limit_reached", state,
+                         ref_bonus=REFERRAL_BONUS_GENERATIONS,
+                         oson_limit=OSON_DAILY_LIMIT)
+            )
+            await callback.answer()
+            return
+
+    data = await state.get_data()
+    topics = data.get("topics", [])
+    niche_key = data.get("niche", "other")
+
+    callback_data_value = callback.data.replace("topic_", "")
+
+    if callback_data_value == "back":
+        # Возвращаем к выбору ниши
+        await state.set_state(GenerationStates.selecting_niche)
+        await callback.message.edit_text(
+            await get_text(user_id, "choose_niche", state),
+            reply_markup=get_niche_menu(lang, country=country)
+        )
+        await callback.answer()
+        return
+
+    if callback_data_value == "all":
+        # Генерируем все по очереди
+        if not topics:
+            await callback.message.answer("❌ Нет доступных тем.")
+            await callback.answer()
+            return
+
+        processing_msg = await callback.message.answer(await get_text(user_id, "generating", state))
+        all_content = ""
+        for i, t in enumerate(topics, 1):
+            content = await generate_ai_content(
+                topic=t["title"],
+                niche=niche_key,
+                language=lang,
+                content_type="reels",
+                country=country
+            )
+            all_content += f"<b>Тема {i}: {t['title']}</b>\n\n{content}\n\n─────────────\n\n"
+
+        sub = await get_user_subscription(user_id)
+        if not sub or sub.get("plan") == "free":
+            all_content += f"\n\n─────────────\n{WATERMARK_TEXT}"
+
+        await processing_msg.delete()
+        await callback.message.answer(
+            all_content,
+            reply_markup=get_share_keyboard(lang),
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        return
+
+    number = int(callback_data_value)
+    if number < 1 or number > len(topics):
+        await callback.message.answer(await get_text(user_id, "no_topic", state))
+        await callback.answer()
+        return
+
+    topic = topics[number - 1]
+    processing_msg = await callback.message.answer(await get_text(user_id, "generating", state))
+    try:
+        content = await generate_ai_content(
+            topic=topic["title"],
+            niche=niche_key,
+            language=lang,
+            content_type="reels",
+            country=country
+        )
+        sub = await get_user_subscription(user_id)
+        if not sub or sub.get("plan") == "free":
+            content += f"\n\n─────────────\n{WATERMARK_TEXT}"
+        await processing_msg.delete()
+        await callback.message.answer(
+            content,
+            reply_markup=get_share_keyboard(lang),
+            parse_mode="HTML"
+        )
+        await save_generation(
+            user_id=user_id,
+            niche=get_niche_display(niche_key, lang),
+            topic=topic["title"],
+            content=content
+        )
+        if not is_admin:
+            await increment_generation(user_id)
+    except Exception as e:
+        err_msg = f"❌ Ошибка генерации: {str(e)[:100]}"
+        await processing_msg.edit_text(err_msg)
+
+    await callback.answer()
+
+
+@router.message(GenerationStates.selecting_topic, F.text.regexp(r"^\d+$"))
+async def open_topic_text(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
     country = user.get("country", "uz") if user else "uz"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang, country=country)
 
-    # Проверка на суперадмина
     is_admin = (str(user_id) == str(ADMIN_ID))
     if not is_admin:
         can_generate, _ = await check_daily_limit(user_id)
         if not can_generate:
             await message.answer(
-                get_text(user_id, "limit_reached",
+                await get_text(user_id, "limit_reached", state,
                          ref_bonus=REFERRAL_BONUS_GENERATIONS,
                          oson_limit=OSON_DAILY_LIMIT)
             )
             return
+
     number = int(message.text)
-    topics = user_topics.get(user_id, [])
-    if not topics:
-        if lang == "uz":
-            await message.answer("❌ Avval soha va g'oyalar sonini tanlang.")
-        elif lang == "tg":
-            await message.answer("❌ Аввал ниша ва шумораи идеяро интихоб кунед.")
-        else:
-            await message.answer("❌ Сначала выберите нишу и количество идей.")
-        return
-    if number < 1 or number > len(topics):
-        await message.answer(get_text(user_id, "no_topic"))
-        return
-    topic = topics[number - 1]
-    processing_msg = await message.answer(get_text(user_id, "generating"))
     data = await state.get_data()
-    niche_key = data.get("niche", user_niches.get(user_id, "other"))
+    topics = data.get("topics", [])
+    niche_key = data.get("niche", "other")
+
+    if not topics:
+        await message.answer("❌ Сначала выберите нишу и количество идей.")
+        return
+
+    if number < 1 or number > len(topics):
+        await message.answer(await get_text(user_id, "no_topic", state))
+        return
+
+    topic = topics[number - 1]
+    processing_msg = await message.answer(await get_text(user_id, "generating", state))
     try:
         content = await generate_ai_content(
             topic=topic["title"],
@@ -949,17 +1172,12 @@ async def open_topic(message: Message, state: FSMContext):
         if not is_admin:
             await increment_generation(user_id)
     except Exception as e:
-        if lang == "uz":
-            err_msg = f"❌ Kontent yaratishda xatolik yuz berdi. Keyinroq urinib ko'ring.\n\n{str(e)[:100]}"
-        elif lang == "tg":
-            err_msg = f"❌ Хатои генерация. Баъдтар кӯшиш кунед.\n\n{str(e)[:100]}"
-        else:
-            err_msg = f"❌ Ошибка генерации. Попробуйте позже.\n\n{str(e)[:100]}"
+        err_msg = f"❌ Ошибка генерации: {str(e)[:100]}"
         await processing_msg.edit_text(err_msg)
 
 
 # ============================================
-# CALLBACK: ПОДЕЛИТЬСЯ
+# CALLBACK: ПОДЕЛИТЬСЯ И ОЦЕНИТЬ
 # ============================================
 
 @router.callback_query(F.data == "share_content")
@@ -967,7 +1185,6 @@ async def share_content(callback: CallbackQuery):
     user_id = callback.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
 
     from database.models import add_bonus_generation
     await add_bonus_generation(user_id, 1)
@@ -983,59 +1200,15 @@ async def share_content(callback: CallbackQuery):
 
 
 # ============================================
-# CALLBACK: ПОКУПКА ПОДПИСКИ
-# ============================================
-
-@router.callback_query(F.data.startswith("buy_"))
-async def buy_subscription(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    user = await get_user(user_id)
-    lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
-
-    plan = callback.data.replace("buy_", "")
-    await callback.message.answer(
-        "💳 Выберите способ оплаты:" if lang == "ru" else ("💳 To'lov usulini tanlang:" if lang == "uz" else "💲 Тарзи пардохтро интихоб кунед:"),
-        reply_markup=get_payment_menu(lang, plan)
-    )
-    await callback.answer()
-
-
-# ============================================
-# АДМИН-КОМАНДЫ
-# ============================================
-
-@router.message(Command("admin"))
-async def admin_panel(message: Message):
-    user_id = message.from_user.id
-    if user_id not in ADMIN_IDS and str(user_id) != str(ADMIN_ID):
-        return
-    stats = await get_user_stats(user_id)
-    await message.answer(
-        f"""🔧 <b>Админ-панель Sozanda</b>
-
-👥 Всего пользователей: {stats.get('total_users', 'N/A')}
-📈 Генераций сегодня: {stats.get('today_generations', 'N/A')}
-💰 Платных подписчиков: {stats.get('paid_users', 'N/A')}
-
-Команды:
-/stats — общая статистика
-/broadcast — рассылка
-/add_niche — добавить нишу""",
-        parse_mode="HTML"
-    )
-
-
-# ============================================
 # ОБРАБОТКА НЕИЗВЕСТНЫХ СООБЩЕНИЙ
 # ============================================
 
 @router.message()
-async def unknown_message(message: Message):
+async def unknown_message(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user = await get_user(user_id)
     lang = user.get("language", "ru") if user else "ru"
-    user_languages[user_id] = lang
+    await state.update_data(language=lang)
 
     if lang == "uz":
         text = "❓ Buyruqni tushunmadim. Pastdagi menudan foydalaning."
