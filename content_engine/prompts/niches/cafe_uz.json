@@ -1,0 +1,23 @@
+{
+  "key": "cafe_uz",
+  "country": "uz",
+  "name_ru": "🍔 Рестораны и Чайханы",
+  "name_uz": "🍔 Milliy taomlar va Choyxonalar",
+  "icon": "🍔",
+  "topics_ru": [
+    "Почему в нашей чайхане всегда свежий плов",
+    "5 секретов идеальной самсы из тандыра",
+    "Как мы выбираем лучшее мясо на базаре Чорсу",
+    "Секретный рецепт маринада для узбекского шашлыка",
+    "Традиции узбекского гостеприимства в нашем ресторане"
+  ],
+  "topics_uz": [
+    "Nega bizning choyxonada palov har doim yangi va issiq",
+    "Tandir somsa qilishning 5 ta oltin siri",
+    "Chorsu bozoridan go'sht tanlashning o'zbekona usullari",
+    "Haqiqiy o'zbekona kabob tayyorlash sirlari",
+    "Restoranimizda o'zbekona mehmondo'stlik an'analari"
+  ],
+  "hashtags_ru": "#ресторан #чайхана #ташкент #плов #самса #еда #узбекистан",
+  "hashtags_uz": "#restoran #choyxona #toshkent #palov #somsa #milliytaomlar #uzbekistan"
+}
