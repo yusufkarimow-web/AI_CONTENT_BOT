@@ -20,7 +20,6 @@ from middlewares import (
     I18nMiddleware,
     SubscriptionCheckMiddleware,
     AnalyticsMiddleware,
-    DatabaseMiddleware,
 )
 
 # Импортируем планировщик
@@ -54,6 +53,11 @@ async def main():
     # 1. Инициализация базы данных
     await init_db()
 
+    # Запуск диагностики OpenAI API
+    from services.openai_service import test_connection
+    logger.info("🔍 Запуск диагностики OpenAI API...")
+    test_connection()
+
     if not TOKEN:
         logger.error("❌ ОШИБКА: Не указан BOT_TOKEN!")
         return
@@ -76,9 +80,6 @@ async def main():
     dp.include_router(subscription_router)
 
     # 2. Регистрация мидлварей
-    dp.message.middleware(DatabaseMiddleware())
-    dp.callback_query.middleware(DatabaseMiddleware())
-
     dp.message.middleware(AnalyticsMiddleware())
     dp.callback_query.middleware(AnalyticsMiddleware())
 

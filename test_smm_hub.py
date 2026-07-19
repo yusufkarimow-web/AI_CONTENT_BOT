@@ -27,14 +27,14 @@ class TestSMMHub(unittest.TestCase):
         self.assertEqual(len(topics), 15, "Должно быть сгенерировано ровно 15 тем")
 
     def test_smm_tools_buttons(self):
-        """Проверяет распознавание кнопок SMM инструментов"""
-        self.assertTrue(is_smm_tool_button("💡 Идеи"))
-        self.assertTrue(is_smm_tool_button("💡 Идеяҳо"))
-        self.assertTrue(is_smm_tool_button("💡 G'oyalar"))
+        """Проверяет распознавание новых платформо-центричных SMM инструментов"""
+        self.assertTrue(is_smm_tool_button("📷 Instagram"))
+        self.assertTrue(is_smm_tool_button("📱 Telegram"))
+        self.assertTrue(is_smm_tool_button("🎵 TikTok"))
 
-        self.assertEqual(get_tool_id_by_text("💡 Идеи"), "ideas")
-        self.assertEqual(get_tool_id_by_text("💡 Идеяҳо"), "ideas")
-        self.assertEqual(get_tool_id_by_text("💡 G'oyalar"), "ideas")
+        self.assertEqual(get_tool_id_by_text("📷 Instagram"), "instagram")
+        self.assertEqual(get_tool_id_by_text("📱 Telegram"), "tg_channel")
+        self.assertEqual(get_tool_id_by_text("🎵 TikTok"), "tiktok")
 
     def test_ai_generator_context_prompt(self):
         """Проверяет, что системные промпты содержат правильные города-ориентиры"""
