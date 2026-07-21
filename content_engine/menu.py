@@ -147,6 +147,17 @@ SMM_TOOLS = {
             "ads_offers": ("🎁 Акции и Офферы", "🎁 Аксия ва Офферҳо", "🎁 Aksiyalar va Offerlar"),
             "ads_strategy": ("🎯 Стратегия кампании", "🎯 Стратегияи реклама", "🎯 Reklama strategiyasi")
         }
+    },
+    "expert_presets": {
+        "icon": "⚡",
+        "name_ru": "Пресеты из памяти", "name_tg": "Пресетҳо аз хотира", "name_uz": "Xotira presetlari",
+        "formats": {
+            "preset_cafe": ("🍔 Кафе и Рестораны", "🍔 Кафе ва Ресторанҳо", "🍔 Kafe va Restoranlar"),
+            "preset_beauty": ("💇‍♀️ Салоны красоты", "💇‍♀️ Салонҳои ҳусн", "💇‍♀️ Go'zallik salonlari"),
+            "preset_shop": ("👗 Магазины одежды", "👗 Мағозаҳои либос", "👗 Kiyim do'konlari"),
+            "preset_auto": ("🚗 Автосервисы", "🚗 Автосервисҳо", "🚗 Avtoservislar"),
+            "preset_realestate": ("🏢 Недвижимость", "🏢 Хонаҳо/Иҷора", "🏢 Ko'chmas mulk")
+        }
     }
 }
 
@@ -662,6 +673,46 @@ async def handle_smm_generation_request(message: Message, state: FSMContext):
 
     format_id = get_format_id_by_text(message.text, current_tool, lang)
 
+    if current_tool == "expert_presets":
+        preset_key = format_id.replace("preset_", "")  # "cafe", "beauty", etc.
+        await state.update_data(current_preset_key=preset_key)
+
+        # Present beautiful Inline Keyboard to choose the type of SMM content
+        builder = InlineKeyboardBuilder()
+        if lang == "uz":
+            txt = "⚡️ <b>Ekspert SMM Presetlari</b>\n\nQuyidagi tayyor, professional va yuqori sifatli SMM andozalaridan birini tanlang:"
+            builder.row(InlineKeyboardButton(text="📅 Haftalik kontent-reja", callback_data="preset_type_plan"))
+            builder.row(InlineKeyboardButton(text="📝 Premium SMM Post", callback_data="preset_type_posts"))
+            builder.row(InlineKeyboardButton(text="🎬 Viral Reels ssenariysi", callback_data="preset_type_reels"))
+            builder.row(InlineKeyboardButton(text="📸 Stories progressiv zanjiri", callback_data="preset_type_stories"))
+            builder.row(InlineKeyboardButton(text="📢 Target reklama nusxalari", callback_data="preset_type_ads"))
+            builder.row(InlineKeyboardButton(text="🎯 Sotuv voronkasi", callback_data="preset_type_funnel"))
+            builder.row(InlineKeyboardButton(text="💡 30 ta tayyor g'oya", callback_data="preset_type_ideas"))
+            builder.row(InlineKeyboardButton(text="⬅️ Orqaga", callback_data="go_to_smm_hub"))
+        elif lang == "tg":
+            txt = "⚡️ <b>Пресетҳои Эксперти SMM</b>\n\nYке аз қолабҳои тайёр ва босифати касбиро барои тиҷорати худ интихоб кунед:"
+            builder.row(InlineKeyboardButton(text="📅 Нақшаи контенти 7-рӯза", callback_data="preset_type_plan"))
+            builder.row(InlineKeyboardButton(text="📝 Пости касбии фурӯш", callback_data="preset_type_posts"))
+            builder.row(InlineKeyboardButton(text="🎬 Сценарияи Reels-и вирусӣ", callback_data="preset_type_reels"))
+            builder.row(InlineKeyboardButton(text="📸 Силсилаи Сторизҳои прогрев", callback_data="preset_type_stories"))
+            builder.row(InlineKeyboardButton(text="📢 Намунаҳои Рекламаи target", callback_data="preset_type_ads"))
+            builder.row(InlineKeyboardButton(text="🎯 Воронкаи фурӯши тайёр", callback_data="preset_type_funnel"))
+            builder.row(InlineKeyboardButton(text="💡 30 идеяи ҷолиб", callback_data="preset_type_ideas"))
+            builder.row(InlineKeyboardButton(text="⬅️ Бозгашт", callback_data="go_to_smm_hub"))
+        else:
+            txt = "⚡️ <b>Экспертные SMM Пресеты из памяти</b>\n\nВыберите один из готовых, высококонверсионных профессиональных шаблонов для вашего бизнеса:"
+            builder.row(InlineKeyboardButton(text="📅 Еженедельный контент-план", callback_data="preset_type_plan"))
+            builder.row(InlineKeyboardButton(text="📝 Премиальный продающий пост", callback_data="preset_type_posts"))
+            builder.row(InlineKeyboardButton(text="🎬 Сценарий вирусного Reels", callback_data="preset_type_reels"))
+            builder.row(InlineKeyboardButton(text="📸 Серия прогревающих Stories", callback_data="preset_type_stories"))
+            builder.row(InlineKeyboardButton(text="📢 Варианты рекламы для таргета", callback_data="preset_type_ads"))
+            builder.row(InlineKeyboardButton(text="🎯 Автоворонка продаж в директ", callback_data="preset_type_funnel"))
+            builder.row(InlineKeyboardButton(text="💡 30 вирусных идей", callback_data="preset_type_ideas"))
+            builder.row(InlineKeyboardButton(text="⬅️ Назад в меню SMM", callback_data="go_to_smm_hub"))
+
+        await message.answer(txt, reply_markup=builder.as_markup(), parse_mode="HTML")
+        return
+
     # Проверка лимитов
     is_admin = (str(user_id) == str(ADMIN_ID))
     if not is_admin:
@@ -800,6 +851,70 @@ async def go_to_smm_hub_callback(callback: CallbackQuery, state: FSMContext):
 
     await callback.answer()
     await show_smm_hub_menu(callback.message, state, user_id, lang, niche_key)
+
+
+@router.callback_query(F.data.startswith("preset_type_"))
+async def handle_preset_type_callback(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    data = await state.get_data()
+
+    lang = data.get("language", "ru")
+    preset_key = data.get("current_preset_key", "cafe")
+    preset_type = callback.data.replace("preset_type_", "")
+
+    from data.smm_memory_db import SMM_EXPERT_PRESETS
+
+    preset_data = SMM_EXPERT_PRESETS.get(preset_key, SMM_EXPERT_PRESETS["cafe"])
+    lang_data = preset_data.get(lang, preset_data["ru"])
+    content = lang_data.get(preset_type, "Шаблон временно недоступен.")
+
+    niche_name = preset_data[f"name_{lang}"] if f"name_{lang}" in preset_data else preset_data["name_ru"]
+
+    await callback.message.delete()
+
+    processing_msg = await callback.message.answer("⚡️ <b>Извлекаю премиум пресет из памяти...</b>", parse_mode="HTML")
+    await asyncio.sleep(0.5)
+    await processing_msg.delete()
+
+    header = f"⚡️ <b>TojikAI Expert Preset: {niche_name}</b>\n"
+    header += f"📌 <b>Формат:</b> {preset_type.upper()}\n\n"
+
+    await send_long_message(
+        callback.message,
+        f"{header}{content}"
+    )
+
+    # Автоматическое создание брендированного PDF
+    pdf_msg = await callback.message.answer("⚙️ <b>Создаю брендированный PDF-отчет...</b>")
+    try:
+        from services.pdf_generator import generate_marketing_pdf
+        pdf_buffer = generate_marketing_pdf(
+            country=data.get("country", "uz"),
+            language=lang,
+            niche=niche_name,
+            platform="PRESET_MEMORY",
+            goal=preset_type.upper(),
+            content_text=content
+        )
+        pdf_file = BufferedInputFile(pdf_buffer.getvalue(), filename=f"TojikAI_Expert_Preset_{preset_key}_{preset_type}.pdf")
+
+        await callback.message.answer_document(
+            pdf_file,
+            caption=f"📄 <b>TojikAI Expert Preset Report</b>\n\nВаш готовый, профессионально оформленный маркетинговый отчет на основе премиум-пресета для ниши <b>{niche_name}</b>!",
+            parse_mode="HTML"
+        )
+        await pdf_msg.delete()
+    except Exception as pdf_err:
+        await pdf_msg.edit_text(f"⚠️ Ошибка создания PDF: {str(pdf_err)}")
+
+    builder = InlineKeyboardBuilder()
+    back_lbl = "⬅️ Назад в меню SMM" if lang == "ru" else ("⬅️ Бозгашт ба меню" if lang == "tg" else "⬅️ SMM Menuga qaytish")
+    builder.row(InlineKeyboardButton(text=back_lbl, callback_data="go_to_smm_hub"))
+    await callback.message.answer(
+        "<b>Премиум шаблон успешно доставлен! Хотите выбрать другой?</b>",
+        reply_markup=builder.as_markup(),
+        parse_mode="HTML"
+    )
 
 
 # ============================================
