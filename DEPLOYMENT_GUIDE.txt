@@ -1,0 +1,80 @@
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                    TOJIKAI SMM PLATFORM v3.0                            ║
+║                    QUICK DEPLOYMENT GUIDE                               ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+📦 PACKAGE CONTENTS:
+✅ Complete FastAPI application
+✅ Database models (PostgreSQL)
+✅ Telegram Bot with Mini App
+✅ Payment integration (Click, Payme, Alif)
+✅ AI Content generation (OpenAI GPT-4o-mini)
+✅ PDF export functionality
+✅ WhatsApp integration (Green-API)
+✅ Business simulator (TojikAI Empire)
+✅ Docker & Docker Compose setup
+✅ Nginx reverse proxy config
+
+═══════════════════════════════════════════════════════════════════════════
+
+🚀 QUICK START (5 MINUTES):
+
+1. EXTRACT THE ARCHIVE
+   $ unzip tojikai-smm-platform-v3.0.zip
+
+2. ENTER DIRECTORY
+   $ cd tojikai-smm-platform-v3.0
+
+3. PREPARE ENVIRONMENT
+   $ cp .env.example .env
+
+4. FILL IN YOUR CREDENTIALS IN .env
+   - BOT_TOKEN (from @BotFather)
+   - OPENAI_API_KEY (from OpenAI)
+   - CLICK_SECRET_KEY (or PAYME or ALIF)
+   - WHATSAPP_API_TOKEN (from Green-API)
+
+5. RUN DEPLOYMENT
+   $ chmod +x deploy.sh
+   $ ./deploy.sh
+
+6. VERIFY
+   $ docker-compose logs -f app
+   (Wait for "Application started" message)
+
+7. TEST
+   $ curl https://YOUR_URL/health
+
+═══════════════════════════════════════════════════════════════════════════
+
+🔐 SECURITY CHECKLIST:
+
+Before deploying to production:
+✅ Change all default passwords
+✅ Enable HTTPS/SSL (use Let's Encrypt)
+✅ Configure firewall (only allow ports 80, 443)
+✅ Set SECRET_KEY to strong random string (32+ chars)
+✅ Review .env for test values
+✅ Enable database backups
+✅ Configure log rotation
+✅ Set up monitoring/alerting
+✅ Test payment callbacks
+✅ Verify webhook signatures
+
+═══════════════════════════════════════════════════════════════════════════
+
+📞 SUPPORT:
+
+For issues or questions:
+- Email: support@tojikai.app
+- Telegram: @tojikai_support
+- Documentation: https://docs.tojikai.app
+
+═══════════════════════════════════════════════════════════════════════════
+
+Congratulations! Your TojikAI Platform is ready to serve users!
+
+Happy deploying! 🚀
+
+═══════════════════════════════════════════════════════════════════════════
