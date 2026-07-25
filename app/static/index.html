@@ -1,0 +1,203 @@
+<!-- app/static/index.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TojikAI SMM Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #2563eb;
+        }
+
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .tojikai-glow {
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
+            border-radius: 16px;
+        }
+
+        .loading-skeleton {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="min-h-screen bg-gray-50 pb-20">
+        <!-- Navbar -->
+        <nav class="bg-white sticky top-0 z-40 border-b border-gray-200">
+            <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <img src="/static/images/tojikai_logo_light.png" alt="Logo" class="h-8 w-8" onerror="this.src='https://via.placeholder.com/150';">
+                    <span class="text-lg font-bold text-blue-600">TojikAI</span>
+                </div>
+                <button id="menuBtn" class="text-2xl">☰</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div id="mainContent" class="max-w-md mx-auto p-4">
+            <!-- Welcome Screen -->
+            <div id="welcomeScreen" class="space-y-4">
+                <div class="text-center py-8">
+                    <div class="text-6xl mb-4">🚀</div>
+                    <h1 class="text-2xl font-bold mb-2">TojikAI SMM Platform</h1>
+                    <p class="text-gray-600">Создавайте профессиональный контент за секунды</p>
+                </div>
+
+                <div class="space-y-3">
+                    <button id="btnStartGeneration" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                        🚀 Создать Контент
+                    </button>
+                    <button id="btnEmpireGame" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition">
+                        🎮 TojikAI Empire
+                    </button>
+                    <button id="btnAIConsultant" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                        🤖 AI Консультант
+                    </button>
+                    <button id="btnSettings" class="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition">
+                        ⚙️ Настройки
+                    </button>
+                </div>
+
+                <!-- Subscription Status -->
+                <div id="subscriptionStatus" class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-sm"><strong>Тариф:</strong> <span id="planName">Free</span></p>
+                    <p class="text-sm"><strong>Осталось генераций:</strong> <span id="remaining">5</span>/5</p>
+                    <button id="btnUpgrade" class="text-blue-600 text-sm font-semibold mt-2">Перейти на Pro →</button>
+                </div>
+            </div>
+
+            <!-- Generation Wizard -->
+            <div id="generationWizard" class="hidden space-y-4">
+                <!-- Step Indicator -->
+                <div id="stepIndicator" class="flex gap-1">
+                    <div class="step h-1 bg-blue-600 rounded flex-1"></div>
+                    <div class="step h-1 bg-gray-300 rounded flex-1"></div>
+                    <div class="step h-1 bg-gray-300 rounded flex-1"></div>
+                    <div class="step h-1 bg-gray-300 rounded flex-1"></div>
+                </div>
+
+                <!-- Step 1: Niche -->
+                <div id="step1" class="space-y-3">
+                    <h2 class="text-lg font-bold">📋 Выберите нишу</h2>
+                    <div id="nicheOptions" class="grid grid-cols-2 gap-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Step 2: Platform -->
+                <div id="step2" class="hidden space-y-3">
+                    <h2 class="text-lg font-bold">🎯 Выберите платформу</h2>
+                    <div id="platformOptions" class="space-y-2">
+                        <button class="platform-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="instagram">
+                            📸 Instagram
+                        </button>
+                        <button class="platform-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="telegram">
+                            📱 Telegram
+                        </button>
+                        <button class="platform-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="tiktok">
+                            🎵 TikTok
+                        </button>
+                        <button class="platform-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="youtube">
+                            ▶️ YouTube
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Goal -->
+                <div id="step3" class="hidden space-y-3">
+                    <h2 class="text-lg font-bold">💡 Выберите цель</h2>
+                    <div id="goalOptions" class="space-y-2">
+                        <button class="goal-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="sales">
+                            💰 Продажи & Заявки
+                        </button>
+                        <button class="goal-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="reach">
+                            📈 Охваты & Вирусность
+                        </button>
+                        <button class="goal-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="engagement">
+                            💬 Вовлечение
+                        </button>
+                        <button class="goal-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="expertise">
+                            🌟 Личный бренд
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Format -->
+                <div id="step4" class="hidden space-y-3">
+                    <h2 class="text-lg font-bold">📐 Выберите формат</h2>
+                    <div id="formatOptions" class="space-y-2">
+                        <button class="format-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="reels">
+                            🎬 Взрывной Reels
+                        </button>
+                        <button class="format-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="post">
+                            📄 Структурированный пост
+                        </button>
+                        <button class="format-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="stories">
+                            📖 Серия Stories (5 шт)
+                        </button>
+                        <button class="format-btn w-full p-3 border-2 border-gray-300 rounded-lg hover:border-blue-600 text-left" data-value="plan">
+                            📅 Еженедельный План
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex gap-2 mt-6">
+                    <button id="btnBack" class="flex-1 bg-gray-300 text-gray-900 py-2 rounded-lg font-semibold">← Назад</button>
+                    <button id="btnNext" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold">Далее →</button>
+                </div>
+            </div>
+
+            <!-- Generation Result -->
+            <div id="resultScreen" class="hidden space-y-4">
+                <h2 class="text-xl font-bold">✨ Ваш SMM-пакет готов!</h2>
+
+                <div id="resultContent" class="bg-gray-50 p-4 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="btnDownloadPDF" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold">
+                        📥 Скачать PDF
+                    </button>
+                    <button id="btnSendWhatsApp" class="flex-1 bg-green-500 text-white py-2 rounded-lg font-semibold">
+                        💬 WhatsApp
+                    </button>
+                </div>
+
+                <button id="btnCreateNew" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold">
+                    🔄 Создать новый
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden space-y-4">
+                <h2 class="text-lg font-bold">⏳ Генерируется контент...</h2>
+                <div class="space-y-2">
+                    <div class="h-4 bg-gray-300 rounded loading-skeleton"></div>
+                    <div class="h-4 bg-gray-300 rounded loading-skeleton" style="animation-delay: 0.2s"></div>
+                    <div class="h-4 bg-gray-300 rounded loading-skeleton" style="animation-delay: 0.4s"></div>
+                </div>
+                <p class="text-sm text-gray-600 text-center">Это может занять 10-30 секунд</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

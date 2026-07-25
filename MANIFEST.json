@@ -1,0 +1,44 @@
+{
+  "project": "TojikAI SMM Platform",
+  "version": "3.0.0",
+  "release_date": "2026-07-24T20:40:05.184069",
+  "components": {
+    "backend": "FastAPI 0.104.1",
+    "database": "PostgreSQL 16",
+    "cache": "Redis 7",
+    "bot": "aiogram 3.3.0",
+    "ai": "OpenAI GPT-4o-mini",
+    "payments": [
+      "Click",
+      "Payme",
+      "Alif"
+    ],
+    "messaging": "Green-API (WhatsApp)"
+  },
+  "features": [
+    "Smart Steps (4-step content generator)",
+    "TojikAI Empire (business simulator)",
+    "AI Consultant",
+    "Multi-language support (TJ, UZ, RU)",
+    "Payment integration",
+    "Telegram Mini App",
+    "PDF export",
+    "WhatsApp messaging",
+    "Analytics & reporting"
+  ],
+  "deployment": {
+    "method": "Docker Compose",
+    "min_requirements": {
+      "cpu": "2 cores",
+      "ram": "4 GB",
+      "disk": "50 GB",
+      "os": "Linux/Mac/Windows"
+    }
+  },
+  "security": {
+    "encryption": "TLS 1.2+",
+    "authentication": "Telegram Bot API",
+    "api_security": "Bearer tokens",
+    "payment_security": "Webhook signatures"
+  }
+}

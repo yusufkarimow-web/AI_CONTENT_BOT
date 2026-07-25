@@ -1,0 +1,108 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: tojikai_db
+    environment:
+      POSTGRES_USER: tojikai_user
+      POSTGRES_PASSWORD: secure_password
+      POSTGRES_DB: tojikai_db
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=pg_trgm"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tojikai_user -d tojikai_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tojikai_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: tojikai_redis
+    command: redis-server --requirepass secure_redis_password --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tojikai_network
+
+  # FastAPI Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tojikai_app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://tojikai_user:secure_password@db:5432/tojikai_db
+      REDIS_URL: redis://:secure_redis_password@redis:6379/0
+      BOT_TOKEN: ${BOT_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLICK_SECRET_KEY: ${CLICK_SECRET_KEY}
+      PAYME_SECRET_KEY: ${PAYME_SECRET_KEY}
+      ALIF_SECRET_KEY: ${ALIF_SECRET_KEY}
+      WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN}
+      SECRET_KEY: ${SECRET_KEY}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
+      ENVIRONMENT: production
+      RUN_MODE: webhook
+      PUBLIC_BASE_URL: https://api.tojikai.app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./generated:/app/generated
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - tojikai_network
+
+  # Nginx Reverse Proxy (Optional but Recommended)
+  nginx:
+    image: nginx:alpine
+    container_name: tojikai_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./logs:/var/log/nginx
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - tojikai_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  tojikai_network:
+    driver: bridge
