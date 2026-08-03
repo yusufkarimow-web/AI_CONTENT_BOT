@@ -5,3 +5,4 @@ __pycache__/
 .env
 content_engine/prompts/niches/
 *.log
+venv/
